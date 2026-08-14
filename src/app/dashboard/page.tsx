@@ -55,10 +55,26 @@ function DashboardHome() {
       return;
     }
 
+    // Normalize date from DD/MM/YYYY or DD-MM-YYYY to YYYY-MM-DD
+    let normalizedDate = tanggal;
+    const dateMatch = tanggal.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})$/);
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, "0");
+      const month = dateMatch[2].padStart(2, "0");
+      let year = dateMatch[3];
+      if (year.length === 2) {
+        year = "20" + year;
+      }
+      normalizedDate = `${year}-${month}-${day}`;
+    }
+
+    // Normalize time by replacing dot with colon (e.g. 12.00 -> 12:00)
+    const normalizedTime = waktu.replace(/\./g, ":");
+
     const result = await addMisa({
       jenis_perayaan: jenisPerayaan,
-      tanggal: tanggal,
-      waktu: waktu,
+      tanggal: normalizedDate,
+      waktu: normalizedTime,
       status: "Draft",
     });
 
