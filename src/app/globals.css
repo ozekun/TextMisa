@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc; /* Slate 50 standard background */
+  --foreground: #0f172a; /* Near-black text primary */
+  
+  --primary: #0d9488; /* Teal 600 brand color */
+  --primary-hover: #0f766e; /* Teal 700 brand color hover */
+  --dark-accent: #0a233a; /* Dark Navy for SPX preview */
+  --workspace-bg: #f0fdfa; /* Soft Emerald Green active workspace background */
+  --surface: #ffffff; /* Card surface color */
+  
+  --text-secondary: #64748b; /* Slate Gray */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-primary: var(--primary);
+  --color-brand-hover: var(--primary-hover);
+  --color-brand-dark: var(--dark-accent);
+  --color-workspace: var(--workspace-bg);
+  --color-surface: var(--surface);
+  --color-text-sec: var(--text-secondary);
+  
+  --font-sans: var(--font-plus-jakarta-sans), ui-sans-serif, system-ui;
+  --font-nunito: var(--font-nunito), ui-sans-serif, system-ui;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom scrollbars for workspace elegance */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
