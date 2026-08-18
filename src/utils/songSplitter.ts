@@ -9,6 +9,64 @@ export interface Slide {
   label: string; // e.g. "Reff", "Ayat 1", "Bait"
 }
 
+// Helper to fix ALL CAPS text to sentence case, preserving common Catholic terms
+function fixCapslock(text: string): string {
+  const letters = text.replace(/[^a-zA-Z]/g, '');
+  if (letters.length === 0) return text;
+
+  const upperCount = letters.split('').filter(c => c === c.toUpperCase()).length;
+  // Jika lebih dari 60% huruf besar, anggap sebagai capslock
+  if (upperCount / letters.length < 0.6) return text;
+
+  let lower = text.toLowerCase();
+  
+  // Huruf pertama setiap baris jadi huruf besar
+  let formatted = lower.split('\n').map(line => {
+    return line.replace(/([a-z])/, match => match.toUpperCase());
+  }).join('\n');
+
+  // Kamus kata-kata khusus yang harus selalu huruf besar awalnya
+  const dict = [
+    "Tuhan", "Allah", "Yesus", "Kristus", "Roh", "Kudus", "Bapa", "Putra", 
+    "Bunda", "Maria", "Santo", "Santa", "Perawan", "Bait", "Reff",
+    "Puji", "Syukur", "Amin", "Haleluya", "Hosana", "Kyrie", "Eleison", "Christe"
+  ];
+  
+  dict.forEach(word => {
+    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    formatted = formatted.replace(regex, word);
+  });
+
+  return formatted;
+}
+
+// Helper to wrap text so lines don't exceed max length
+// firstLineMax digunakan untuk baris pertama yang mungkin memiliki tag <nr> (kotak nomor)
+function wordWrap(text: string, firstLineMax: number = 26, restMax: number = 26): string[] {
+  const words = text.split(/[ \t]+/);
+  const lines: string[] = [];
+  let currentLine = "";
+  let isFirstLine = true;
+
+  for (const word of words) {
+    const currentMax = isFirstLine ? firstLineMax : restMax;
+
+    if (!currentLine) {
+      currentLine = word;
+    } else if (currentLine.length + 1 + word.length <= currentMax) {
+      currentLine += " " + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+      isFirstLine = false;
+    }
+  }
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  return lines;
+}
+
 // Splits a text block into slides of max 2 lines each
 export function splitBlockToSlides(
   text: string | null | undefined,
@@ -19,33 +77,60 @@ export function splitBlockToSlides(
   if (!text || !text.trim()) return [];
 
   // Sanitize text: remove weird icons and unprintable characters
-  // Keep letters, numbers, standard spaces/newlines, and ONLY these punctuation: , . ' :
-  const sanitizedText = text.replace(/[^\p{L}\p{N} \n\r\t\.,':]/gu, '');
+  let sanitizedText = text.replace(/[^\p{L}\p{N} \n\r\t\.,':\-]/gu, '');
+  
+  // Fix Capslock if necessary
+  sanitizedText = fixCapslock(sanitizedText);
 
-  // Split lines and filter out empty ones
-  const lines = sanitizedText
-    .split("\n")
-    .map((line) => line.trim().replace(/ {2,}/g, ' ')) // Also clean up multiple spaces
-    .filter((line) => line.length > 0);
+  // Normalize newlines and split by double newlines to form distinct blocks/stanzas
+  const normalizedText = sanitizedText.replace(/\r\n/g, '\n');
+  const blocks = normalizedText.split(/\n\s*\n/);
 
   const slides: Slide[] = [];
+  let currentSlideIndex = 0; // to keep track of slide count for the label
 
-  // Group lines into pairs of max 2 lines
-  for (let i = 0; i < lines.length; i += 2) {
-    const pair = lines.slice(i, i + 2);
-    let slideText = pair.join("\n");
+  blocks.forEach((block, blockIndex) => {
+    if (!block.trim()) return;
 
-    // Prepend <nr>X</nr> only to the FIRST slide of the verse (type: "ayat")
-    if (type === "ayat" && i === 0 && verseNumber !== undefined) {
-      slideText = `<nr>${verseNumber}</nr> ` + slideText;
-    }
+    // Split user's explicit newlines inside the block first
+    const rawLines = block
+      .split("\n")
+      .map((line) => line.trim().replace(/ {2,}/g, ' '))
+      .filter((line) => line.length > 0);
 
-    slides.push({
-      text: slideText,
-      type,
-      label: type === "ayat" ? `Ayat ${verseNumber} (S${Math.floor(i / 2) + 1})` : `${label} (S${Math.floor(i / 2) + 1})`,
+    const lines: string[] = [];
+    rawLines.forEach((line, lineIndex) => {
+      // Jika ini adalah baris pertama dari block pertama di bagian Ayat, baris ini akan menerima tag <nr>
+      const willGetNr = (type === "ayat" && blockIndex === 0 && lineIndex === 0 && verseNumber !== undefined);
+      
+      // Berikan batas 23 karakter untuk baris pertama (agar muat dengan kotak nomor ayat)
+      // dan 26 karakter untuk baris lainnya agar konsisten.
+      const firstLineMax = willGetNr ? 23 : 26;
+      const restMax = 26;
+      
+      const wrapped = wordWrap(line, firstLineMax, restMax);
+      lines.push(...wrapped);
     });
-  }
+
+    // Group lines of this specific block into pairs of max 2 lines
+    for (let i = 0; i < lines.length; i += 2) {
+      const pair = lines.slice(i, i + 2);
+      let slideText = pair.join("\n");
+
+      // Prepend <nr>X</nr> only to the FIRST slide of the verse (type: "ayat")
+      // Only do this on the very first block and first pair
+      if (type === "ayat" && blockIndex === 0 && i === 0 && verseNumber !== undefined) {
+        slideText = `<nr>${verseNumber}</nr> ` + slideText;
+      }
+
+      currentSlideIndex++;
+      slides.push({
+        text: slideText,
+        type,
+        label: type === "ayat" ? `Ayat ${verseNumber} (S${currentSlideIndex})` : `${label} (S${currentSlideIndex})`,
+      });
+    }
+  });
 
   return slides;
 }
