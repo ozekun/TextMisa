@@ -18,6 +18,9 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "MisaText - Otomatisasi Running Teks Ekaristi",
   description: "Platform otomatisasi running teks perayaan Ekaristi Misa Gereja Katolik terintegrasi langsung dengan sistem broadcast graphics SPX Graphics.",
+  icons: {
+    icon: '/icon.png',
+  },
 };
 
 export default function RootLayout({
