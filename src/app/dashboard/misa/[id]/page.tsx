@@ -541,28 +541,31 @@ function WorkspacePage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-workspace flex flex-col transition-colors duration-300">
       {/* Workspace Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-teal-100/50">
-        <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-teal-100/50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-2">
+          {/* Left: Back button & Title */}
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
             <Link
               href="/dashboard"
-              className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-bold shadow-sm transition-all active:scale-95"
+              className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-bold shadow-xs transition-all active:scale-95 shrink-0"
+              title="Kembali ke Dashboard"
             >
               ←
             </Link>
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-primary">
+            <div className="min-w-0">
+              <span className="hidden sm:block text-[10px] font-extrabold uppercase tracking-wider text-brand-primary">
                 Perayaan Ekaristi
               </span>
-              <h1 className="text-sm font-black text-slate-900 line-clamp-1">
+              <h1 className="text-xs sm:text-sm font-black text-slate-900 truncate">
                 {activeMisa.jenis_perayaan}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Right: Status & Actions */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <span
-              className={`px-3 py-1 rounded-full text-[10px] font-bold border ${activeMisa.status === "Ready"
+              className={`hidden md:inline-flex px-3 py-1 rounded-full text-[10px] font-bold border ${activeMisa.status === "Ready"
                 ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                 : "bg-amber-50 text-amber-700 border-amber-100"
                 }`}
@@ -574,15 +577,22 @@ function WorkspacePage({ params }: PageProps) {
               <>
                 <button
                   onClick={handlePublish}
-                  className="px-5 py-2.5 bg-brand-primary hover:bg-brand-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:px-5 sm:py-2.5 bg-brand-primary hover:bg-brand-hover text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
                 >
-                  Simpan Lagu
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Simpan<span className="hidden sm:inline"> Lagu</span></span>
                 </button>
                 <button
                   onClick={handleFinishMass}
-                  className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95"
+                  className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 sm:px-4 sm:py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer shrink-0"
+                  title="Selesaikan / Hapus Perayaan Misa"
                 >
-                  Hapus
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span className="hidden sm:inline">Hapus</span>
                 </button>
               </>
             )}
@@ -591,7 +601,7 @@ function WorkspacePage({ params }: PageProps) {
       </header>
 
       {/* Main Workspace Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 flex flex-col lg:flex-row gap-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col lg:flex-row gap-6 sm:gap-8">
         {/* Left Side: Liturgy Tab & Inputs Form */}
         <section className="flex-1 space-y-6">
           {/* Liturgy Section Tabs */}
@@ -611,7 +621,7 @@ function WorkspacePage({ params }: PageProps) {
           </div>
 
           {/* Form Container */}
-          <div className="bg-white border border-teal-100/30 rounded-4xl p-8 shadow-sm space-y-6">
+          <div className="bg-white border border-teal-100/30 rounded-3xl sm:rounded-4xl p-5 sm:p-8 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 gap-4">
               <div>
                 <h2 className="text-lg font-black text-slate-900 tracking-tight">

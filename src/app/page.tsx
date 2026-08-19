@@ -37,7 +37,7 @@ export default function LandingPage() {
           </h1>
           
           <p className="text-lg md:text-xl text-text-sec font-light max-w-2xl mx-auto leading-relaxed">
-            MisaText memudahkan Petugas Liturgi Kelompok Umat Basis (KBG) menyusun teks lirik lagu, ordinarium, dan running teks liturgi Ekaristi secara otomatis untuk SPX Graphics.
+            MisaText memudahkan Petugas Liturgi Kelompok Umat Basis (KBG) menyusun teks lirik lagu, ordinarium, dan running teks liturgi Ekaristi secara otomatis ke dalam sistem.
           </p>
 
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -62,9 +62,9 @@ export default function LandingPage() {
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mb-6">
               <span className="text-brand-primary font-bold text-lg">01</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-3">Auto-Split Lirik</h3>
+            <h3 className="text-xl font-bold text-slate-900 mb-3">Input Lirik & Teks</h3>
             <p className="text-text-sec text-sm leading-relaxed">
-              Input lirik lagu Anda secara bebas, dan sistem kami secara otomatis membaginya menjadi maksimal 2 baris per slide dengan format tag ayat yang tepat.
+              Masukkan lirik lagu dan teks ordinarium Anda. Sistem kami akan secara otomatis memformat dan membagi lirik tersebut menjadi baris yang proporsional.
             </p>
           </div>
 
@@ -72,9 +72,9 @@ export default function LandingPage() {
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mb-6">
               <span className="text-brand-primary font-bold text-lg">02</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-3">Real-Time SPX Preview</h3>
+            <h3 className="text-xl font-bold text-slate-900 mb-3">Pratinjau Real-Time</h3>
             <p className="text-text-sec text-sm leading-relaxed">
-              Lihat pratinjau tampilan running teks Anda secara instan di dalam mockup card SPX Graphics, sebelum mengirimkan teks ke sistem broadcast.
+              Lihat pratinjau tampilan teks Anda secara instan di dalam layar pratinjau, untuk memastikan semuanya sudah tersusun rapi dan siap disiarkan.
             </p>
           </div>
 
@@ -82,9 +82,9 @@ export default function LandingPage() {
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mb-6">
               <span className="text-brand-primary font-bold text-lg">03</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-3">Manajemen Jadwal</h3>
+            <h3 className="text-xl font-bold text-slate-900 mb-3">Kirim ke Sistem</h3>
             <p className="text-text-sec text-sm leading-relaxed">
-              Kelola status draf, perayaan liturgi siap siar, serta arsip riwayat perayaan Ekaristi dalam satu dashboard terpusat yang intuitif.
+              Setelah memastikan seluruh teks sudah benar, kirimkan teks perayaan Ekaristi tersebut ke sistem broadcast dengan mudah dan cepat.
             </p>
           </div>
         </section>
