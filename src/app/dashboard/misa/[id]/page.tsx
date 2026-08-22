@@ -403,33 +403,33 @@ function WorkspacePage({ params }: PageProps) {
                 susunanNyanyi: song.susunan_nyanyi,
               });
 
-              let f0_val = song.judul_lagu || section.key;
+              let f0_val = song.header_buku || "";
               let f1_val = slides.length > 0 ? slides.map(slide => slide.text).join("\n\n\n") : "[Lirik belum diisi]";
-              let f2_val = song.header_buku || "";
+              let f2_val = song.judul_lagu || section.key;
 
               let listName = section.key;
 
               if (section.isReading) {
                 if (section.key === "Bacaan 1") {
                   listName = "Bacaan 1";
-                  f0_val = "Bacaan Pertama";
+                  f2_val = "Bacaan Pertama";
                 } else if (section.key === "Bacaan 2") {
                   listName = "Bacaan 2";
-                  f0_val = "Bacaan Kedua";
+                  f2_val = "Bacaan Kedua";
                 } else if (section.key === "Injil") {
                   listName = "Bacaan Injil";
-                  f0_val = "Injil";
+                  f2_val = "Injil";
                 }
 
-                // Jangan pakai f2 untuk bacaan
-                f2_val = "";
-                // Sumber kitab diletakkan di kotak putih utama (f1)
-                f1_val = song.header_buku || "";
+                // f0 adalah sumber kitab (header_buku)
+                f0_val = song.header_buku || "";
+                // f1 kosong untuk bacaan
+                f1_val = "";
               }
 
               items.push({
                 DataFields: [
-                  { field: "comment", value: section.isReading ? listName : `${section.key} - ${f0_val}` },
+                  { field: "comment", value: section.isReading ? listName : `${section.key} - ${f2_val}` },
                   { field: "f0", value: f0_val },
                   { field: "f1", value: f1_val },
                   { field: "f2", value: f2_val },
@@ -440,20 +440,21 @@ function WorkspacePage({ params }: PageProps) {
             });
           } else {
             // Jika kategori ini belum ada isinya sama sekali, buatkan placeholder
-            let emptyF0 = section.key;
-            let emptyF2 = "";
+            let emptyF0 = ""; // nomor lagu / sumber kitab
+            let emptyF1 = section.isReading ? "" : "[Lagu belum diisi]";
+            let emptyF2 = section.key; // judul lagu / kategori liturgi
             let emptyList = section.key;
             if (section.isReading) {
-              if (section.key === "Bacaan 1") { emptyList = "Bacaan Pertama"; emptyF0 = "Bacaan 1"; }
-              else if (section.key === "Bacaan 2") { emptyList = "Bacaan Kedua"; emptyF0 = "Bacaan 2"; }
-              else if (section.key === "Injil") { emptyList = "Bacaan Injil"; emptyF0 = "Injil"; }
+              if (section.key === "Bacaan 1") { emptyList = "Bacaan Pertama"; emptyF2 = "Bacaan Pertama"; }
+              else if (section.key === "Bacaan 2") { emptyList = "Bacaan Kedua"; emptyF2 = "Bacaan Kedua"; }
+              else if (section.key === "Injil") { emptyList = "Bacaan Injil"; emptyF2 = "Injil"; }
             }
 
             items.push({
               DataFields: [
                 { field: "comment", value: section.isReading ? `[KOSONG] ${emptyList}` : `[KOSONG] ${section.key}` },
                 { field: "f0", value: emptyF0 },
-                { field: "f1", value: section.isReading ? "" : "[Lagu belum diisi]" },
+                { field: "f1", value: emptyF1 },
                 { field: "f2", value: emptyF2 },
                 { field: "f3", value: "none" },
                 { field: "f4", value: "gfxCenter" }
@@ -881,7 +882,6 @@ function WorkspacePage({ params }: PageProps) {
             <div className="bg-brand-dark rounded-4xl p-6 text-white shadow-xl flex flex-col justify-between aspect-video relative overflow-hidden group">
               {/* Broadcast Grid overlay decoration */}
               <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
-
               {/* Top info badge */}
               <div className="flex items-center justify-between text-[10px] text-slate-400 z-10 font-mono">
                 <span>PREVIEW CHANNEL</span>
@@ -893,23 +893,28 @@ function WorkspacePage({ params }: PageProps) {
 
               {/* Lower-third Overlay mockup */}
               <div className="my-auto py-4 z-10 min-h-[96px] flex flex-col justify-center text-center">
-                {activeSlide ? (
-                  <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 w-full">
-                    {/* Lyrics Box (Yellow background, dark text) */}
-                    <div className="w-full bg-[#ffa500] text-[#2a1c00] px-6 py-4 rounded-2xl border border-amber-600/20 font-semibold shadow-md">
-                      {renderSlideText(activeSlide.text)}
-                    </div>
-                    {/* Title Box (White background, brown/orange text) */}
-                    {(currentSong?.judul_lagu || currentSong?.header_buku) && (
-                      <div className="bg-white text-[#742f08] px-4 py-1.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider">
-                        {currentSong?.header_buku && (
-                          <span className="bg-amber-100 text-[#742f08] px-2 py-0.5 rounded font-bold">{currentSong.header_buku}</span>
-                        )}
-                        {currentSong?.judul_lagu && (
-                          <span>{currentSong.judul_lagu}</span>
-                        )}
+                {activeSlide || (activeSection.isReading && currentSong?.header_buku) ? (
+                  <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 w-full relative pt-5">
+                    {/* Top Box: Song Number / Reading Source (White badge / f0) */}
+                    {currentSong?.header_buku && (
+                      <div className="bg-white text-[#742f08] px-3 py-1 rounded-lg border border-slate-100 shadow-sm text-[9px] font-extrabold uppercase tracking-wider z-20">
+                        {currentSong.header_buku}
                       </div>
                     )}
+                    
+                    {/* Lyrics Box: f1 (Yellow background, dark text) */}
+                    {activeSlide && (
+                      <div className="w-full bg-[#ffa500] text-[#2a1c00] px-6 py-4 rounded-2xl border border-amber-600/20 font-semibold shadow-md mt-1">
+                        {renderSlideText(activeSlide.text)}
+                      </div>
+                    )}
+                    
+                    {/* Title Box: f2 (White background, brown/orange text) */}
+                    <div className="bg-white text-[#742f08] px-4 py-1.5 rounded-xl border border-slate-100 shadow-sm text-[10px] font-extrabold uppercase tracking-wider mt-1">
+                      {activeSection.isReading 
+                        ? (activeTab === "Bacaan 1" ? "Bacaan Pertama" : activeTab === "Bacaan 2" ? "Bacaan Kedua" : "Injil")
+                        : (currentSong?.judul_lagu || activeTab)}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-slate-400 text-xs italic">
