@@ -895,22 +895,22 @@ function WorkspacePage({ params }: PageProps) {
               <div className="my-auto py-4 z-10 min-h-[96px] flex flex-col justify-center text-center">
                 {activeSlide || (activeSection.isReading && currentSong?.header_buku) ? (
                   <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 w-full relative pt-5">
-                    {/* Top Box: Song Number / Reading Source (White badge / f0) */}
+                    {/* Top Box: Song Number / Reading Source (Yellow badge / f0) */}
                     {currentSong?.header_buku && (
-                      <div className="bg-white text-[#742f08] px-3 py-1 rounded-lg border border-slate-100 shadow-sm text-[9px] font-extrabold uppercase tracking-wider z-20">
+                      <div className="bg-[#ffa500] text-[#2a1c00] px-3 py-1 rounded-lg border border-amber-600/20 shadow-md text-[9px] font-extrabold uppercase tracking-wider z-20">
                         {currentSong.header_buku}
                       </div>
                     )}
                     
-                    {/* Lyrics Box: f1 (Yellow background, dark text) */}
+                    {/* Lyrics Box: f1 (White background, black text) */}
                     {activeSlide && (
-                      <div className="w-full bg-[#ffa500] text-[#2a1c00] px-6 py-4 rounded-2xl border border-amber-600/20 font-semibold shadow-md mt-1">
+                      <div className="w-full bg-white text-black px-6 py-4 rounded-2xl border border-slate-100 font-semibold shadow-md mt-1">
                         {renderSlideText(activeSlide.text)}
                       </div>
                     )}
                     
-                    {/* Title Box: f2 (White background, brown/orange text) */}
-                    <div className="bg-white text-[#742f08] px-4 py-1.5 rounded-xl border border-slate-100 shadow-sm text-[10px] font-extrabold uppercase tracking-wider mt-1">
+                    {/* Title Box: f2 (Yellow background, dark text) */}
+                    <div className="bg-[#ffa500] text-[#2a1c00] px-4 py-1.5 rounded-xl border border-amber-600/20 shadow-md text-[10px] font-extrabold uppercase tracking-wider mt-1">
                       {activeSection.isReading 
                         ? (activeTab === "Bacaan 1" ? "Bacaan Pertama" : activeTab === "Bacaan 2" ? "Bacaan Kedua" : "Injil")
                         : (currentSong?.judul_lagu || activeTab)}
