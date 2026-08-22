@@ -894,18 +894,22 @@ function WorkspacePage({ params }: PageProps) {
               {/* Lower-third Overlay mockup */}
               <div className="my-auto py-4 z-10 min-h-[96px] flex flex-col justify-center text-center">
                 {activeSlide ? (
-                  <div className="bg-black/40 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 w-full">
+                    {/* Lyrics Box (Yellow background, dark text) */}
+                    <div className="w-full bg-[#ffa500] text-[#2a1c00] px-6 py-4 rounded-2xl border border-amber-600/20 font-semibold shadow-md">
+                      {renderSlideText(activeSlide.text)}
+                    </div>
+                    {/* Title Box (White background, brown/orange text) */}
                     {(currentSong?.judul_lagu || currentSong?.header_buku) && (
-                      <div className="flex items-center justify-center gap-2 mb-3 text-[10px] font-bold">
+                      <div className="bg-white text-[#742f08] px-4 py-1.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider">
                         {currentSong?.header_buku && (
-                          <span className="bg-brand-primary/20 px-2 py-0.5 rounded text-white">{currentSong.header_buku}</span>
+                          <span className="bg-amber-100 text-[#742f08] px-2 py-0.5 rounded font-bold">{currentSong.header_buku}</span>
                         )}
                         {currentSong?.judul_lagu && (
-                          <span className="uppercase tracking-wider text-teal-300">{currentSong.judul_lagu}</span>
+                          <span>{currentSong.judul_lagu}</span>
                         )}
                       </div>
                     )}
-                    {renderSlideText(activeSlide.text)}
                   </div>
                 ) : (
                   <div className="text-slate-400 text-xs italic">

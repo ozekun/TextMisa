@@ -68,7 +68,7 @@ const ACCOUNT_GROUPS: AccountGroup[] = [
     password: "persaba2026"
   },
   {
-    name: "Lainnya (muncul Form teks dibawahnya; user mengisi manual)",
+    name: "Lainnya",
     kbgs: [],
     password: "kategorial2026"
   }
@@ -253,8 +253,8 @@ export default function LoginPage() {
                         key={kbgName}
                         onClick={() => handleKbgClick(kbgName)}
                         className={`flex items-center gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 border rounded-xl sm:rounded-2xl cursor-pointer transition-all ${isChecked
-                            ? "bg-teal-50/60 border-brand-primary text-brand-primary font-bold shadow-xs"
-                            : "bg-white border-slate-200 hover:border-slate-300 text-slate-700 active:bg-slate-50"
+                          ? "bg-teal-50/60 border-brand-primary text-brand-primary font-bold shadow-xs"
+                          : "bg-white border-slate-200 hover:border-slate-300 text-slate-700 active:bg-slate-50"
                           }`}
                       >
                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${isChecked ? "border-brand-primary bg-brand-primary" : "border-slate-300 bg-white"
