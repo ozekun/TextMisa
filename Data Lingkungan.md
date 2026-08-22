@@ -3,27 +3,27 @@ lingkungn st. Brigitta-Bitera
 Password : brigitta2026
 
 lingkungn st. barbara-Gianyar
-	kbg : St. 1, St. 2
+	kbg : St. Gisela, St. Hironimus
 Password : barbara2026
 
 lingkungn st. Damianus-Bangli
-	kbg : St. 1, St. 2
+	kbg : St. Yosephine Bakhita, St. Yohanes Pembaptis
 Password : damianus2026
 
 lingkungn st. Mikael-Ubud
-	kbg : St. Maria Fatima, St. 2
+	kbg : St. Maria Fatima, St. Mater Dei
 Password : mikael2026
 
 lingkungn st. Rafael-Ubud
-	kbg : St. Maria, St. 1
+	kbg : St. Maria, St. Petrus
 Password : rafael2026
 
 lingkungn st. Gabriel-Gianyar
-	kbg : St. Paulus, St. 1
+	kbg : St. Paulus, St. Sisilia
 Password : gabriel2026
 
 lingkungn st. Yoseph-Batubulan
-	kbg : St. Madalena Canossa, St. 1
+	kbg : St. Madalena Canossa, St. Theresia Avilla, St. Maria Bunda Segala Bangsa
 Password : yoseph2026
 
 OMK
@@ -39,4 +39,4 @@ Persaba
 Password : persaba2026
 
 Lainnya (muncul Form teks dibawahnya; user mengisi manual)
-Password : 
+Password : kategorial2026

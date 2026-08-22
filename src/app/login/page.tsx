@@ -13,38 +13,38 @@ interface AccountGroup {
 
 const ACCOUNT_GROUPS: AccountGroup[] = [
   {
-    name: "Lingkungan St. Brigitta-Bitera",
+    name: "lingkungn st. Brigitta-Bitera",
     kbgs: ["St. Yusuf", "St. Fransiskus Xaverius"],
     password: "brigitta2026"
   },
   {
-    name: "Lingkungan St. Barbara-Gianyar",
-    kbgs: ["St. 1", "St. 2"],
+    name: "lingkungn st. barbara-Gianyar",
+    kbgs: ["St. Gisela", "St. Hironimus"],
     password: "barbara2026"
   },
   {
-    name: "Lingkungan St. Damianus-Bangli",
-    kbgs: ["St. 1", "St. 2"],
+    name: "lingkungn st. Damianus-Bangli",
+    kbgs: ["St. Yosephine Bakhita", "St. Yohanes Pembaptis"],
     password: "damianus2026"
   },
   {
-    name: "Lingkungan St. Mikael-Ubud",
-    kbgs: ["St. Maria Fatima", "St. 2"],
+    name: "lingkungn st. Mikael-Ubud",
+    kbgs: ["St. Maria Fatima", "St. Mater Dei"],
     password: "mikael2026"
   },
   {
-    name: "Lingkungan St. Rafael-Ubud",
-    kbgs: ["St. Maria", "St. 1"],
+    name: "lingkungn st. Rafael-Ubud",
+    kbgs: ["St. Maria", "St. Petrus"],
     password: "rafael2026"
   },
   {
-    name: "Lingkungan St. Gabriel-Gianyar",
-    kbgs: ["St. Paulus", "St. 1"],
+    name: "lingkungn st. Gabriel-Gianyar",
+    kbgs: ["St. Paulus", "St. Sisilia"],
     password: "gabriel2026"
   },
   {
-    name: "Lingkungan St. Yoseph-Batubulan",
-    kbgs: ["St. Madalena Canossa", "St. 1"],
+    name: "lingkungn st. Yoseph-Batubulan",
+    kbgs: ["St. Madalena Canossa", "St. Theresia Avilla", "St. Maria Bunda Segala Bangsa"],
     password: "yoseph2026"
   },
   {
@@ -68,7 +68,7 @@ const ACCOUNT_GROUPS: AccountGroup[] = [
     password: "persaba2026"
   },
   {
-    name: "Lainnya",
+    name: "Lainnya (muncul Form teks dibawahnya; user mengisi manual)",
     kbgs: [],
     password: "kategorial2026"
   }
@@ -109,7 +109,7 @@ export default function LoginPage() {
     }
 
     let finalGroupName = selectedGroupName;
-    if (selectedGroupName === "Lainnya") {
+    if (selectedGroupName.startsWith("Lainnya")) {
       if (!customGroupName.trim()) {
         setError("Silakan isi nama Lingkungan/Kategori secara manual.");
         return;
@@ -219,7 +219,7 @@ export default function LoginPage() {
             </div>
 
             {/* Manual input if "Lainnya" is selected */}
-            {selectedGroupName === "Lainnya" && (
+            {selectedGroupName.startsWith("Lainnya") && (
               <div className="animate-in fade-in duration-200">
                 <label
                   htmlFor="custom-group"
