@@ -887,7 +887,7 @@ function WorkspacePage({ params }: PageProps) {
                 <span>PREVIEW CHANNEL</span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  SPX ONLINE
+                  Preview online
                 </span>
               </div>
 
@@ -901,17 +901,17 @@ function WorkspacePage({ params }: PageProps) {
                         {currentSong.header_buku}
                       </div>
                     )}
-                    
+
                     {/* Lyrics Box: f1 (White background, black text) */}
                     {activeSlide && (
                       <div className="w-full bg-white text-black px-6 py-4 rounded-2xl border border-slate-100 font-semibold shadow-md mt-1">
                         {renderSlideText(activeSlide.text)}
                       </div>
                     )}
-                    
+
                     {/* Title Box: f2 (Yellow background, dark text) */}
                     <div className="bg-[#ffa500] text-[#2a1c00] px-4 py-1.5 rounded-xl border border-amber-600/20 shadow-md text-[10px] font-extrabold uppercase tracking-wider mt-1">
-                      {activeSection.isReading 
+                      {activeSection.isReading
                         ? (activeTab === "Bacaan 1" ? "Bacaan Pertama" : activeTab === "Bacaan 2" ? "Bacaan Kedua" : "Injil")
                         : (currentSong?.judul_lagu || activeTab)}
                     </div>
