@@ -23,7 +23,7 @@ export default function PanduanPengguna() {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-brand-primary hover:bg-brand-hover text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95"
+        className="fixed bottom-6 right-6 z-50 hidden sm:flex items-center gap-2 bg-brand-primary hover:bg-brand-hover text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
