@@ -11,6 +11,7 @@ interface AppContextType {
   isLoading: boolean;
   setCurrentUser: (user: User | null) => void;
   addMisa: (misa: Omit<JadwalMisa, "id" | "created_at" | "user_id">) => Promise<JadwalMisa | null>;
+  updateMisa: (misaId: number, data: Partial<JadwalMisa>) => Promise<boolean>;
   updateMisaStatus: (misaId: number, status: JadwalMisa["status"]) => Promise<void>;
   getMisaSongs: (misaId: number) => LaguMisa[];
   saveMisaSongs: (misaId: number, categorySongs: Omit<LaguMisa, "id" | "created_at">[]) => Promise<void>;
@@ -102,6 +103,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return data;
   };
 
+  const updateMisa = async (misaId: number, data: Partial<JadwalMisa>) => {
+    const { error } = await supabase
+      .from('jadwal_misa')
+      .update(data)
+      .eq('id', misaId);
+
+    if (error) {
+      console.error("Error updating misa:", error);
+      return false;
+    }
+
+    setMisaList((prev) => prev.map((m) => (m.id === misaId ? { ...m, ...data } : m)));
+    return true;
+  };
+
   const updateMisaStatus = async (misaId: number, status: JadwalMisa["status"]) => {
     const { error } = await supabase
       .from('jadwal_misa')
@@ -182,6 +198,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         setCurrentUser,
         addMisa,
+        updateMisa,
         updateMisaStatus,
         getMisaSongs,
         saveMisaSongs,

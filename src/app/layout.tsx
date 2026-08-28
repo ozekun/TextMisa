@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Nunito } from "next/font/google";
 import { AppProvider } from "@/context/AppContext";
+import PanduanPengguna from "@/components/PanduanPengguna";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -39,6 +40,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AppProvider>{children}</AppProvider>
+        <PanduanPengguna />
       </body>
     </html>
   );

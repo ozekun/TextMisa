@@ -58,7 +58,7 @@ function RiwayatPage() {
     });
 
     swalWithBootstrapButtons.fire({
-      title: "Pulihkan Misa ke Draft?",
+      title: "Pulihkan Misa ke Status Belum Siap?",
       text: "Misa ini akan kembali tampil di dashboard utama dan dapat disunting kembali.",
       icon: "warning",
       showCancelButton: true,
@@ -71,7 +71,7 @@ function RiwayatPage() {
           await updateMisaStatus(id, "Draft");
           await swalWithBootstrapButtons.fire({
             title: "Dipulihkan!",
-            text: "Jadwal Misa berhasil dikembalikan ke status Draft.",
+            text: "Jadwal Misa berhasil dikembalikan ke status Belum Siap.",
             icon: "success",
             confirmButtonText: "OK"
           });

@@ -257,8 +257,8 @@ function WorkspacePage({ params }: PageProps) {
     });
 
     swalWithBootstrapButtons.fire({
-      title: "Simpan Lagu?",
-      text: "Jadwal Misa ini akan disimpan dan ditandai sebagai 'Ready'!",
+      title: "Simpan & Buat Rundown?",
+      text: "Jadwal Misa akan disimpan, dikirim ke SPX, dan ditandai sebagai 'Ready'!",
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Ya, Simpan!",
@@ -266,16 +266,27 @@ function WorkspacePage({ params }: PageProps) {
       reverseButtons: true
     }).then(async (result) => {
       if (result.isConfirmed) {
-        await saveMisaSongs(misaId, songsInTab);
-        await updateMisaStatus(misaId, "Ready");
+        try {
+          await saveMisaSongs(misaId, songsInTab);
+          const safeFilename = await exportToSpxCore();
+          await updateMisaStatus(misaId, "Ready");
 
-        await swalWithBootstrapButtons.fire({
-          title: "Berhasil!",
-          text: "Jadwal Misa ditandai sebagai 'Ready' untuk SPX Graphic.",
-          icon: "success",
-          confirmButtonText: "OK"
-        });
-        router.push("/dashboard");
+          await swalWithBootstrapButtons.fire({
+            title: "Berhasil!",
+            text: `Jadwal Misa tersimpan dan Rundown "${safeFilename}.json" terkirim ke SPX.`,
+            icon: "success",
+            confirmButtonText: "OK"
+          });
+          router.push("/dashboard");
+        } catch (error: any) {
+          console.error("Publish Error:", error);
+          swalWithBootstrapButtons.fire({
+            title: "Gagal Menyimpan / Mengirim",
+            text: error.message || "Terjadi kesalahan sistem.",
+            icon: "error",
+            confirmButtonText: "Tutup"
+          });
+        }
       }
     });
   };
@@ -354,37 +365,17 @@ function WorkspacePage({ params }: PageProps) {
     );
   };
 
-  // Trigger Send to SPX Graphics via SFTP (Generate Rundown)
-  const handleSendToSpx = async () => {
-    const swalWithBootstrapButtons = Swal.mixin({
-      customClass: {
-        confirmButton: "px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold transition-all shadow-sm mx-1 active:scale-95 cursor-pointer",
-        cancelButton: "px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-xs font-bold transition-all shadow-sm mx-1 active:scale-95 cursor-pointer"
-      },
-      buttonsStyling: false
-    });
+  // Core logic to export SPX Rundown
+  const exportToSpxCore = async () => {
+    // 1. Ambil semua lagu di misa ini yang sudah TERSIMPAN di database
+    const savedMisaSongs = getMisaSongs(misaId);
 
-    const result = await swalWithBootstrapButtons.fire({
-      title: "Buat Rundown SPX?",
-      text: "Seluruh lirik lagu dari Misa ini akan di-export sebagai Rundown langsung ke server SPX!",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Ya, Buat Rundown!",
-      cancelButtonText: "Batal",
-      reverseButtons: true
-    });
+    // 2. Gabungkan dengan data dari tab yang SEDANG DIBUKA (jika ada perubahan yang belum di-save)
+    const otherSavedSongs = savedMisaSongs.filter(s => s.kategori !== activeTab);
+    const currentSongs = [...otherSavedSongs, ...songsInTab];
 
-    if (result.isConfirmed) {
-      try {
-        // 1. Ambil semua lagu di misa ini yang sudah TERSIMPAN di database
-        const savedMisaSongs = getMisaSongs(misaId);
-
-        // 2. Gabungkan dengan data dari tab yang SEDANG DIBUKA (jika ada perubahan yang belum di-save)
-        const otherSavedSongs = savedMisaSongs.filter(s => s.kategori !== activeTab);
-        const currentSongs = [...otherSavedSongs, ...songsInTab];
-
-        // 3. Format setiap lagu menjadi Item SPX berdasarkan urutan LITURGY_SECTIONS
-        const items: any[] = [];
+    // 3. Format setiap lagu menjadi Item SPX berdasarkan urutan LITURGY_SECTIONS
+    const items: any[] = [];
 
         LITURGY_SECTIONS.forEach((section) => {
           const songsInSection = currentSongs.filter(s => s.kategori === section.key);
@@ -408,27 +399,27 @@ function WorkspacePage({ params }: PageProps) {
               let listName = section.key;
 
               if (section.isReading) {
+                let judulBacaan = "";
                 if (section.key === "Bacaan 1") {
                   listName = "Bacaan 1";
-                  f2_val = "Bacaan Pertama";
+                  judulBacaan = "Bacaan Pertama";
                 } else if (section.key === "Bacaan 2") {
                   listName = "Bacaan 2";
-                  f2_val = "Bacaan Kedua";
+                  judulBacaan = "Bacaan Kedua";
                 } else if (section.key === "Injil") {
                   listName = "Bacaan Injil";
-                  f2_val = "Injil";
+                  judulBacaan = "Injil";
                 }
 
-                // f0 adalah sumber kitab (header_buku)
-                f0_val = song.header_buku || "";
-                // f1 kosong untuk bacaan
-                f1_val = "";
+                f0_val = judulBacaan;
+                f1_val = song.header_buku || "";
+                f2_val = "";
               }
 
               items.push({
                 DataFields: [
                   { field: "comment", value: section.isReading ? listName : `${section.key} - ${f2_val}` },
-                  { field: "f0", value: f0_val },
+                  { field: "f0", value: f0_val ? `<span style="font-size: 1.5em;">${f0_val}</span>` : "" },
                   { field: "f1", value: f1_val },
                   { field: "f2", value: f2_val },
                   { field: "f3", value: "none" },
@@ -443,15 +434,17 @@ function WorkspacePage({ params }: PageProps) {
             let emptyF2 = section.key; // judul lagu / kategori liturgi
             let emptyList = section.key;
             if (section.isReading) {
-              if (section.key === "Bacaan 1") { emptyList = "Bacaan Pertama"; emptyF2 = "Bacaan Pertama"; }
-              else if (section.key === "Bacaan 2") { emptyList = "Bacaan Kedua"; emptyF2 = "Bacaan Kedua"; }
-              else if (section.key === "Injil") { emptyList = "Bacaan Injil"; emptyF2 = "Injil"; }
+              if (section.key === "Bacaan 1") { emptyList = "Bacaan Pertama"; emptyF0 = "Bacaan Pertama"; }
+              else if (section.key === "Bacaan 2") { emptyList = "Bacaan Kedua"; emptyF0 = "Bacaan Kedua"; }
+              else if (section.key === "Injil") { emptyList = "Bacaan Injil"; emptyF0 = "Injil"; }
+              emptyF1 = "";
+              emptyF2 = "";
             }
 
             items.push({
               DataFields: [
                 { field: "comment", value: section.isReading ? `[KOSONG] ${emptyList}` : `[KOSONG] ${section.key}` },
-                { field: "f0", value: emptyF0 },
+                { field: "f0", value: emptyF0 ? `<span style="font-size: 1.5em;">${emptyF0}</span>` : "" },
                 { field: "f1", value: emptyF1 },
                 { field: "f2", value: emptyF2 },
                 { field: "f3", value: "none" },
@@ -476,7 +469,7 @@ function WorkspacePage({ params }: PageProps) {
               items.push({
                 DataFields: [
                   { field: "comment", value: `Anamnesis - ${item.title}` },
-                  { field: "f0", value: item.title },
+                  { field: "f0", value: item.title ? `<span style="font-size: 1.5em;">${item.title}</span>` : "" },
                   { field: "f1", value: item.text },
                   { field: "f2", value: item.header },
                   { field: "f3", value: "none" },
@@ -486,6 +479,30 @@ function WorkspacePage({ params }: PageProps) {
             });
           }
         });
+
+        // Tambahkan nama pastor paroki secara otomatis di akhir rundown (setelah Penutup)
+        items.push(
+          {
+            DataFields: [
+              { field: "comment", value: "Pastor - RD. Yulius Kehi" },
+              { field: "f0", value: "" },
+              { field: "f1", value: "RD. Yulius Kehi" },
+              { field: "f2", value: "" },
+              { field: "f3", value: "none" },
+              { field: "f4", value: "gfxLeft" }
+            ]
+          },
+          {
+            DataFields: [
+              { field: "comment", value: "Pastor - RD. Dr. Dominikus Gusti Bagus Kusumawanta" },
+              { field: "f0", value: "" },
+              { field: "f1", value: "RD. Dr. Dominikus Gusti Bagus Kusumawanta" },
+              { field: "f2", value: "" },
+              { field: "f3", value: "none" },
+              { field: "f4", value: "gfxLeft" }
+            ]
+          }
+        );
 
         // 4. Format Nama File: tgl,bulan - KBG
         const dateObj = new Date(activeMisa.tanggal);
@@ -512,10 +529,36 @@ function WorkspacePage({ params }: PageProps) {
 
         const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(data.error || "Gagal mengirim ke SPX Server");
-        }
+    if (!response.ok) {
+      throw new Error(data.error || "Gagal mengirim ke SPX Server");
+    }
 
+    return safeFilename;
+  };
+
+  // Trigger Send to SPX Graphics via SFTP (Generate Rundown)
+  const handleSendToSpx = async () => {
+    const swalWithBootstrapButtons = Swal.mixin({
+      customClass: {
+        confirmButton: "px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold transition-all shadow-sm mx-1 active:scale-95 cursor-pointer",
+        cancelButton: "px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-xs font-bold transition-all shadow-sm mx-1 active:scale-95 cursor-pointer"
+      },
+      buttonsStyling: false
+    });
+
+    const result = await swalWithBootstrapButtons.fire({
+      title: "Buat Rundown SPX?",
+      text: "Seluruh lirik lagu dari Misa ini akan di-export sebagai Rundown langsung ke server SPX!",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Ya, Buat Rundown!",
+      cancelButtonText: "Batal",
+      reverseButtons: true
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const safeFilename = await exportToSpxCore();
         setShowSpxNotification(true);
         setTimeout(() => setShowSpxNotification(false), 3000);
 
@@ -672,63 +715,45 @@ function WorkspacePage({ params }: PageProps) {
             {/* Song Form */}
             {currentSong && (
               <div className="space-y-5">
-                {/* Book Header & Title (Hidden for Ordinarium) */}
-                {!activeSection.ordinarium && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                        {activeSection.isReading ? "Judul Bacaan (Permanen)" : "Judul Lagu"}
-                      </label>
-                      <input
-                        type="text"
-                        placeholder={activeSection.isReading ? "" : "Contoh: Pujilah Tuhan"}
-                        value={
-                          activeSection.isReading
-                            ? (activeSection.key === "Injil" ? "Bacaan Injil" : activeSection.key)
-                            : (currentSong.judul_lagu || "")
-                        }
-                        onChange={(e) => {
-                          if (!activeSection.isReading) {
-                            updateSongField(activeSongIndex, "judul_lagu", e.target.value);
-                          }
-                        }}
-                        disabled={activeSection.isReading}
-                        className={`block w-full px-4 py-3 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all ${activeSection.isReading
-                          ? "bg-slate-100 text-slate-500 font-semibold cursor-not-allowed"
-                          : "text-slate-900 bg-white"
-                          }`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                        {activeSection.isReading ? "Sumber Kitab / Injil" : "Nomor Lagu / Teks"}
-                      </label>
-                      <input
-                        type="text"
-                        placeholder={activeSection.isReading ? "Contoh: Kej 1:1-5" : "Contoh: Puji Syukur No. 320"}
-                        value={currentSong.header_buku || ""}
-                        onChange={(e) => updateSongField(activeSongIndex, "header_buku", e.target.value)}
-                        className="block w-full px-4 py-3 border border-slate-200 rounded-2xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Ordinarium Title (Only for Kyrie, Gloria, etc) */}
-                {activeSection.ordinarium && (
+                {/* Book Header & Title */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                      Judul / Kategori Ordinarium
+                      {activeSection.isReading ? "Judul Bacaan (Permanen)" : "Judul Lagu"}
                     </label>
                     <input
                       type="text"
-                      placeholder="Contoh: Tuhan Kasihanilah Kami (Misa Kita II)"
-                      value={currentSong.judul_lagu || ""}
-                      onChange={(e) => updateSongField(activeSongIndex, "judul_lagu", e.target.value)}
+                      placeholder={activeSection.isReading ? "" : "Contoh: Pujilah Tuhan"}
+                      value={
+                        activeSection.isReading
+                          ? (activeSection.key === "Injil" ? "Bacaan Injil" : activeSection.key)
+                          : (currentSong.judul_lagu || "")
+                      }
+                      onChange={(e) => {
+                        if (!activeSection.isReading) {
+                          updateSongField(activeSongIndex, "judul_lagu", e.target.value);
+                        }
+                      }}
+                      disabled={activeSection.isReading}
+                      className={`block w-full px-4 py-3 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all ${activeSection.isReading
+                        ? "bg-slate-100 text-slate-500 font-semibold cursor-not-allowed"
+                        : "text-slate-900 bg-white"
+                        }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      {activeSection.isReading ? "Sumber Kitab / Injil" : "Nomor Lagu / Teks"}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={activeSection.isReading ? "Contoh: Kej 1:1-5" : "Contoh: Puji Syukur No. 320"}
+                      value={currentSong.header_buku || ""}
+                      onChange={(e) => updateSongField(activeSongIndex, "header_buku", e.target.value)}
                       className="block w-full px-4 py-3 border border-slate-200 rounded-2xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
                     />
                   </div>
-                )}
+                </div>
 
                 {/* Sequence Dropdown (Hidden for Ordinarium and Readings) */}
                 {!activeSection.ordinarium && !activeSection.isReading && (
@@ -747,7 +772,6 @@ function WorkspacePage({ params }: PageProps) {
                       <option value="ayat-only">Ayat Saja (Tanpa Reff)</option>
                       <option value="reff-ayat-reff">Reff - Ayat - Reff </option>
                       <option value="ayat-reff-ayat">Ayat - Reff - Ayat </option>
-                      <option value="reff-ayat">Reff - Ayat - Ayat </option>
                     </select>
                   </div>
                 )}

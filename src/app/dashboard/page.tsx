@@ -10,11 +10,12 @@ import Swal from "sweetalert2";
 import dynamic from "next/dynamic";
 
 function DashboardHome() {
-  const { currentUser, misaList, addMisa, songs, deleteMisa, updateMisaStatus } = useApp();
+  const { currentUser, misaList, addMisa, updateMisa, songs, deleteMisa, updateMisaStatus } = useApp();
   const router = useRouter();
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
+  const [editMisaId, setEditMisaId] = useState<number | null>(null);
   const [jenisPerayaan, setJenisPerayaan] = useState("");
   const [tanggal, setTanggal] = useState("");
   const [waktu, setWaktu] = useState("");
@@ -48,6 +49,23 @@ function DashboardHome() {
   // Temporarily removing user_id check as Supabase schema expects UUID but mock user is integer.
   const activeMisa = misaList.filter((m) => m.status !== "Selesai");
 
+  const openCreateModal = () => {
+    setEditMisaId(null);
+    setJenisPerayaan("");
+    setTanggal("");
+    setWaktu("");
+    setError("");
+    setModalOpen(true);
+  };
+
+  const handleEditMisa = (misa: any) => {
+    setEditMisaId(misa.id);
+    setJenisPerayaan(misa.jenis_perayaan);
+    setTanggal(misa.tanggal);
+    setWaktu(misa.waktu);
+    setModalOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jenisPerayaan.trim() || !tanggal || !waktu) {
@@ -71,30 +89,50 @@ function DashboardHome() {
     // Normalize time by replacing dot with colon (e.g. 12.00 -> 12:00)
     const normalizedTime = waktu.replace(/\./g, ":");
 
-    const result = await addMisa({
-      jenis_perayaan: jenisPerayaan,
-      tanggal: normalizedDate,
-      waktu: normalizedTime,
-      status: "Draft",
-    });
+    if (editMisaId) {
+      const result = await updateMisa(editMisaId, {
+        jenis_perayaan: jenisPerayaan,
+        tanggal: normalizedDate,
+        waktu: normalizedTime,
+      });
 
-    if (!result) {
-      setError("Gagal menyimpan jadwal misa ke database. Pastikan koneksi Supabase Anda sudah benar.");
-      return;
+      if (!result) {
+        setError("Gagal memperbarui jadwal misa.");
+        return;
+      }
+
+      Swal.fire({
+        title: "Jadwal Misa Berhasil Diperbarui!",
+        icon: "success",
+        draggable: true
+      });
+    } else {
+      const result = await addMisa({
+        jenis_perayaan: jenisPerayaan,
+        tanggal: normalizedDate,
+        waktu: normalizedTime,
+        status: "Draft",
+      });
+
+      if (!result) {
+        setError("Gagal menyimpan jadwal misa ke database. Pastikan koneksi Supabase Anda sudah benar.");
+        return;
+      }
+
+      Swal.fire({
+        title: "Jadwal Misa Berhasil Ditambahkan!",
+        icon: "success",
+        draggable: true
+      });
     }
 
     // Reset Form & Close Modal
+    setEditMisaId(null);
     setJenisPerayaan("");
     setTanggal("");
     setWaktu("");
     setError("");
     setModalOpen(false);
-
-    Swal.fire({
-      title: "Jadwal Misa Berhasil Ditambahkan!",
-      icon: "success",
-      draggable: true
-    });
   };
 
   const handleArchiveMisa = async (misaId: number) => {
@@ -161,7 +199,7 @@ function DashboardHome() {
             </p>
           </div>
           <button
-            onClick={() => setModalOpen(true)}
+            onClick={openCreateModal}
             className="self-start sm:self-center inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-white bg-brand-primary hover:bg-brand-hover rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
           >
             + Buat Jadwal Misa Baru
@@ -176,7 +214,7 @@ function DashboardHome() {
               Tidak ada jadwal misa aktif saat ini. Silakan buat jadwal misa baru untuk mulai menginput lirik lagu liturgi.
             </p>
             <button
-              onClick={() => setModalOpen(true)}
+              onClick={openCreateModal}
               className="mt-2 inline-flex items-center justify-center px-5 py-2.5 text-xs font-bold text-white bg-brand-primary hover:bg-brand-hover rounded-xl transition-all"
             >
               Buat Jadwal Pertama
@@ -200,7 +238,7 @@ function DashboardHome() {
                         )}`}
                       >
                         {misa.status === "Draft"
-                          ? "Draft"
+                          ? "Belum Siap"
                           : misa.status === "Ready"
                             ? "Ready"
                             : "Belum Diisi"}
@@ -253,6 +291,15 @@ function DashboardHome() {
                       {count === 0 ? "Isi Lagu Misa" : "Edit Lagu Misa"}
                     </Link>
                     <button
+                      onClick={() => handleEditMisa(misa)}
+                      className="p-3 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-2xl transition-all border border-amber-100/50 flex items-center justify-center shrink-0 cursor-pointer"
+                      title="Edit Jadwal Misa"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89 1.14l-2.685.8.8-2.685a4.5 4.5 0 011.14-1.89l12.665-12.665zM16.862 4.487L19.5 7.125" />
+                      </svg>
+                    </button>
+                    <button
                       onClick={() => handleArchiveMisa(misa.id)}
                       className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl transition-all border border-red-100/50 flex items-center justify-center shrink-0 cursor-pointer"
                       title="Arsipkan Jadwal Misa"
@@ -286,7 +333,7 @@ function DashboardHome() {
           <div className="bg-white rounded-4xl max-w-md w-full p-8 shadow-2xl border border-slate-100 space-y-6 relative animate-in fade-in zoom-in-95 duration-150">
             <div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                Buat Jadwal Misa Baru
+                {editMisaId ? "Edit Jadwal Misa" : "Buat Jadwal Misa Baru"}
               </h2>
               <p className="text-xs text-text-sec mt-1">
                 Masukkan informasi jadwal liturgi Misa yang bertugas
