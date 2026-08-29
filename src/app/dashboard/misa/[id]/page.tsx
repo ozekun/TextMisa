@@ -28,6 +28,14 @@ const LITURGY_SECTIONS = [
 
 import dynamic from "next/dynamic";
 
+// Helper to format scripture source text to sentence/title case (capitalized first letter of words)
+function formatScriptureSource(text: string): string {
+  if (!text) return "";
+  return text.replace(/[a-zA-Z]+/g, (match) => {
+    return match.charAt(0).toUpperCase() + match.slice(1).toLowerCase();
+  });
+}
+
 function WorkspacePage({ params }: PageProps) {
   const router = useRouter();
   const resolvedParams = use(params);
@@ -412,14 +420,14 @@ function WorkspacePage({ params }: PageProps) {
                 }
 
                 f0_val = judulBacaan;
-                f1_val = song.header_buku || "";
+                f1_val = song.header_buku ? formatScriptureSource(song.header_buku) : "";
                 f2_val = "";
               }
 
               items.push({
                 DataFields: [
                   { field: "comment", value: section.isReading ? listName : `${section.key} - ${f2_val}` },
-                  { field: "f0", value: f0_val ? `<span style="font-size: 1.5em;">${f0_val}</span>` : "" },
+                  { field: "f0", value: f0_val ? `<span style="font-size: 1.2em;">${f0_val}</span>` : "" },
                   { field: "f1", value: f1_val },
                   { field: "f2", value: f2_val },
                   { field: "f3", value: "none" },
@@ -444,7 +452,7 @@ function WorkspacePage({ params }: PageProps) {
             items.push({
               DataFields: [
                 { field: "comment", value: section.isReading ? `[KOSONG] ${emptyList}` : `[KOSONG] ${section.key}` },
-                { field: "f0", value: emptyF0 ? `<span style="font-size: 1.5em;">${emptyF0}</span>` : "" },
+                { field: "f0", value: emptyF0 ? `<span style="font-size: 1.2em;">${emptyF0}</span>` : "" },
                 { field: "f1", value: emptyF1 },
                 { field: "f2", value: emptyF2 },
                 { field: "f3", value: "none" },
@@ -469,7 +477,7 @@ function WorkspacePage({ params }: PageProps) {
               items.push({
                 DataFields: [
                   { field: "comment", value: `Anamnesis - ${item.title}` },
-                  { field: "f0", value: item.title ? `<span style="font-size: 1.5em;">${item.title}</span>` : "" },
+                  { field: "f0", value: item.title ? `<span style="font-size: 1.2em;">${item.title}</span>` : "" },
                   { field: "f1", value: item.text },
                   { field: "f2", value: item.header },
                   { field: "f3", value: "none" },
@@ -919,15 +927,31 @@ function WorkspacePage({ params }: PageProps) {
                 {activeSlide || (activeSection.isReading && currentSong?.header_buku) ? (
                   <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2 duration-200 w-full relative pt-4">
                     {/* Top Box: Song Number / Reading Source (Orange badge) */}
-                    {currentSong?.header_buku && (
+                    {activeSection.isReading ? (
                       <div className="bg-[#ffa500] text-[#2a1c00] px-4 py-1.5 rounded shadow-sm text-xs font-bold italic z-20 -mb-2 relative">
-                        {currentSong.header_buku}
+                        {activeTab === "Bacaan 1" ? "Bacaan Pertama" : activeTab === "Bacaan 2" ? "Bacaan Kedua" : "Injil"}
                       </div>
+                    ) : (
+                      currentSong?.header_buku && (
+                        <div className="bg-[#ffa500] text-[#2a1c00] px-4 py-1.5 rounded shadow-sm text-xs font-bold italic z-20 -mb-2 relative">
+                          {currentSong.header_buku}
+                        </div>
+                      )
                     )}
 
                     {/* Lyrics Box (White background, black text) */}
                     <div className="w-full bg-white text-black px-6 py-5 rounded-lg border border-slate-100 font-semibold shadow-md flex flex-col items-center justify-center gap-2">
-                      {activeSlide ? (
+                      {activeSection.isReading ? (
+                        currentSong?.header_buku ? (
+                          <span className="font-serif font-bold whitespace-pre-wrap leading-relaxed text-lg tracking-wide block text-center max-w-[280px] mx-auto text-slate-900">
+                            {formatScriptureSource(currentSong.header_buku)}
+                          </span>
+                        ) : (
+                          <span className="font-serif font-bold text-lg text-slate-400 italic">
+                            [Teks Bacaan]
+                          </span>
+                        )
+                      ) : activeSlide ? (
                         renderSlideText(activeSlide.text)
                       ) : (
                         <span className="font-serif font-bold text-lg text-slate-400 italic">
@@ -937,11 +961,11 @@ function WorkspacePage({ params }: PageProps) {
                     </div>
 
                     {/* Bottom Box: Song Title / Section (Orange badge) */}
-                    <div className="bg-[#ffa500] text-[#2a1c00] px-4 py-1.5 rounded shadow-sm text-xs font-bold italic z-20 -mt-2 relative">
-                      {activeSection.isReading
-                        ? (activeTab === "Bacaan 1" ? "Bacaan Pertama" : activeTab === "Bacaan 2" ? "Bacaan Kedua" : "Injil")
-                        : (currentSong?.judul_lagu || activeTab)}
-                    </div>
+                    {!activeSection.isReading && (
+                      <div className="bg-[#ffa500] text-[#2a1c00] px-4 py-1.5 rounded shadow-sm text-xs font-bold italic z-20 -mt-2 relative">
+                        {currentSong?.judul_lagu || activeTab}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-slate-400 text-xs italic">
