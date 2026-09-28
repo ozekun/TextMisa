@@ -133,6 +133,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteMisa = async (misaId: number) => {
+    // Hapus lagu terkait terlebih dahulu untuk menghindari foreign key constraint error
+    const { error: songError } = await supabase
+      .from('lagu_misa')
+      .delete()
+      .eq('misa_id', misaId);
+
+    if (songError) {
+      console.error("Error deleting misa songs:", songError);
+    }
+
     const { error } = await supabase
       .from('jadwal_misa')
       .delete()
@@ -144,6 +154,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     setMisaList((prev) => prev.filter((m) => m.id !== misaId));
+    setSongs((prev) => prev.filter((s) => s.misa_id !== misaId));
     return true;
   };
 

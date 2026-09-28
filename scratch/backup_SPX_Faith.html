@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+
+<head>
+
+    <!--
+
+    Template Pack "Faith" for SPX Graphics Controller
+    ▸ spxgc.com | Copyright 2021 SmartPX
+
+    Version: 0.1.0 / first release version
+    Build: Mon Mar 29 2021 23:40:01 GMT+0300 (GMT+03:00) 
+
+    Non-minified source build.
+
+-->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>spxgc.com | Graphic Templates</title>
+    <link rel="stylesheet" href="./css/spx_layout.css">
+    <link rel="stylesheet" href="./customize.css">
+    <script src="./js/spx_faith.js"></script>
+    <script src="./js/lib/anime.min.js"></script>
+</head>
+
+<body>
+    <div class="SPXWindow">
+        <div id="GFX">
+            <div id="headlineZone" class="">
+                <div id="headline" class="HEADLINE"></div>
+            </div>
+            <div id="textureZone">
+                <div id="textZone" class="MAINTEXTBOX "></div>
+                <div id="footerZone" class="gfxCenter">
+                    <div id="footer" class="FOOTERBOX "></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="dataFields" style="opacity: 0;">
+        <div id="f0" data-description="Headline"></div>
+        <div id="f1" data-description="Body text"></div>
+        <div id="f2" data-description="Footer text"></div>
+        <div id="f3" data-description="Background"></div>
+        <div id="f4" data-description="Alignment"></div>
+    </div>
+</body>
+
+<script>
+    let stepIndex = 0
+    let stepRest = false
+    let maxSteps = -1
+    let stepsDone = false
+
+    function runTemplateUpdate() {
+        // init
+        let linesArr = htmlDecode(document.getElementById('f1').innerHTML).split('<br><br><br>')
+        let root = document.getElementById('textZone')
+        maxSteps = linesArr.length;
+        let pageAlign = document.getElementById('f4').innerText
+        linesArr.forEach((item,index) => {
+            const el = document.createElement('div')
+            el.setAttribute('id', 'txt'+index)
+            el.setAttribute('style', 'opacity: 0;')
+            el.setAttribute('class', 'txtitem ' + pageAlign)
+            el.innerHTML = item // pre-decoded string
+            root.appendChild(el)
+        });
+        document.getElementById('txt0').style.opacity = 1
+        document.getElementById('headline').innerHTML = htmlDecode(document.getElementById('f0').innerHTML)
+        document.getElementById('footer').innerHTML = htmlDecode(document.getElementById('f2').innerHTML)
+        let rectelem = document.getElementById('GFX')
+        document.getElementById('headlineZone').classList.add( pageAlign );
+        document.getElementById('textZone').classList.add( pageAlign );
+        document.getElementById('footerZone').classList     =   pageAlign;
+        document.getElementById('footer').classList.add( pageAlign );
+        let bgelem = document.getElementById('textureZone')
+        let imageFile = document.getElementById('f3').innerText
+        rectelem.classList.add(pageAlign);
+        if(pageAlign=='gfxLeft'){
+            rectelem.classList.add('f_left')
+        }
+        else if(pageAlign=='gfxCenter'){
+            rectelem.classList.add('f_center')
+        }
+        else if(pageAlign=='gfxRight'){
+            rectelem.classList.add('f_right')
+        }
+
+        if (imageFile!='none') {
+            bgelem.style.backgroundColor = 'transparent';
+            bgelem.style.backgroundImage = 'url("' + imageFile + '")'
+        }
+
+        if(!document.getElementById('footer').innerText) {
+            document.getElementById('footerZone').style.display = 'none'
+        }
+
+        if(!document.getElementById('headline').innerText) {
+            document.getElementById('headlineZone').style.display = 'none'
+        } 
+        
+        bgelem.style.textAlign = pageAlign.toLowerCase().replace('gfx', '')
+        setSize()
+    }
+
+    function runAnimationIN() {
+        // PLAY
+        let Alignment = document.getElementById('f4').innerText
+        const timeline = window.anime.timeline({duration: 1200, easing: 'easeOutQuart'});
+        timeline
+            .add( { targets: '#GFX', opacity: [0, 1], duration: 100, easing: 'linear'} )
+            .add( { targets: '#textureZone', webkitClipPath: ['inset(100% 0% 0% 0%)', 'inset(0% 0% 0% 0%)'], easing: 'easeOutCubic' } )
+            .add( { targets: '#textureZone', translateY: [100, 0],opacity: [0, 1] }, 200 )
+            .add( { targets: '#textZone', translateY: [75, 0], opacity: [0, 1] }, 300 )
+            .add( { targets: '#headline', translateY: [50, 0], opacity: [0, 1] }, 400 )
+            .add( { targets: '#footerZone', opacity: [0, 1], easing: 'linear' }, 1200 )
+        timeline.play()
+    }
+
+    function runAnimationOUT() {
+        // STOP
+        let curClipValue = document.getElementById('GFX').style.clipPath;
+        const timeline = window.anime.timeline({duration: 1000, easing:  'easeOutQuart'})
+        timeline
+            .add( { targets: '#GFX', opacity: [1, 0], duration: 200, easing: 'linear' } )
+            .add( { targets: '#GFX', webkitClipPath: ['inset(0% 0% 0% 0%)', 'inset(0% 0% 100% 0%)']}, 0)
+            .add( { targets: '#headline', translateY: [0, -50]}, 0 )
+            .add( { targets: '#textZone', translateY: [0, -50] },  )
+            .add( { targets: '#footerZone', translateY: [0, -50]}, 0 )
+        timeline.play()
+    }
+
+    function nextFaithText() {
+        // CONTINUE
+        if(stepRest && stepsDone == false) {
+            stepRest = false
+            if( stepIndex < maxSteps ) stepIndex++
+            else return
+            anime({ targets: '#' + 'txt'+stepIndex,
+                        duration:   500,
+                        opacity:    1,
+                        easing:     'linear' });
+        }
+        else {
+            stepRest = true
+            anime({ targets: '#' + 'txt'+stepIndex,
+                duration:   200,
+                opacity:    0,
+                easing:     'linear' });
+            if( stepIndex == maxSteps - 1 ) stepsDone = true
+        }
+
+    }
+
+    function setSize() {
+        let itemArr = document.querySelectorAll('.txtitem')
+        let tallest = 0;
+        itemArr.forEach((el) => {
+            if (el.offsetHeight > tallest) {
+                tallest = el.offsetHeight
+            }
+        });
+        document.getElementById('textZone').style.height=tallest + 'px';
+    }
+
+    window.SPXGCTemplateDefinition = {
+        "defversion": "1",
+        "description": "Lyrics and Scripture",
+        "playserver": "OVERLAY",
+        "playchannel": "1",
+        "playlayer": "14",
+        "webplayout": "14",
+        "steps": "500",
+        "out": "manual",
+        "dataformat": "json",
+        "uicolor": "7",
+        "DataFields": [
+            {
+                "field" : "comment",
+                "ftype" : "textfield",
+                "title" : "Name item for rundown",
+                "value" : "[ Item name ]"
+            },
+            {
+                "field" : "f0",
+                "ftype" : "textfield",
+                "title" : "Headline",
+                "value" : "Made Me Glad"
+            },
+            {
+                "ftype" : "instruction",
+                "value" : "Two empty lines splits the text into pages. Use CONTINUE (Shift + Space) to progress to subsequent pages."
+            },
+            {
+                "field" : "f1",
+                "ftype" : "textarea",
+                "title" : "Multipage texts",
+                "value" : "<nr>1</nr>I will bless the <focus>Lord forever</focus>\nI will trust Him at all times\nHe has delivered me from all fear\nHe has set my feet upon a rock\nI will not be moved\nAnd I'll say of the Lord\n\n\n<nr>2</nr>You are my Shield, my Strength\nMy Portion Deliverer\nMy Shelter, Strong tower\nMy very present help in <focus>time of need</focus>"
+            },            
+            {
+                "field" : "f2",
+                "ftype" : "textfield",
+                "title" : "Footer text",
+                "value" : "Hillsong"
+            },
+
+            {
+                "field" : "f3",
+                "ftype" : "filelist",
+                "title" : "Background",
+                "assetfolder" : "/media/images/bg/" ,
+                "extension" : "png",
+                "value" : "none",
+            },
+            {
+                "field": "f4",
+                "ftype": "dropdown",
+                "title": "Position on screen",
+                "value": "gfxLeft",
+                "items": [
+                    {
+                        "text": "Left",
+                        "value": "gfxLeft"
+                    },
+                    {
+                        "text": "Center",
+                        "value": "gfxCenter"
+                    },
+                    {
+                        "text": "Right",
+                        "value": "gfxRight"
+                    }
+                ]
+            }
+
+        ]
+    };
+
+ 
+</script>
+
+</html>

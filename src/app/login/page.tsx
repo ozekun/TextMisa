@@ -13,37 +13,37 @@ interface AccountGroup {
 
 const ACCOUNT_GROUPS: AccountGroup[] = [
   {
-    name: "lingkungn st. Brigitta-Bitera",
+    name: "lingkungan st. Brigitta-Bitera",
     kbgs: ["St. Yusuf", "St. Fransiskus Xaverius"],
     password: "brigitta2026"
   },
   {
-    name: "lingkungn st. barbara-Gianyar",
+    name: "lingkungan st. barbara-Gianyar",
     kbgs: ["St. Gisela", "St. Hironimus"],
     password: "barbara2026"
   },
   {
-    name: "lingkungn st. Damianus-Bangli",
+    name: "lingkungan st. Damianus-Bangli",
     kbgs: ["St. Yosephine Bakhita", "St. Yohanes Pembaptis"],
     password: "damianus2026"
   },
   {
-    name: "lingkungn st. Mikael-Ubud",
+    name: "lingkungan st. Mikael-Ubud",
     kbgs: ["St. Maria Fatima", "St. Mater Dei"],
     password: "mikael2026"
   },
   {
-    name: "lingkungn st. Rafael-Ubud",
+    name: "lingkungan st. Rafael-Ubud",
     kbgs: ["St. Maria", "St. Petrus"],
     password: "rafael2026"
   },
   {
-    name: "lingkungn st. Gabriel-Gianyar",
+    name: "lingkungan st. Gabriel-Gianyar",
     kbgs: ["St. Paulus", "St. Sisilia"],
     password: "gabriel2026"
   },
   {
-    name: "lingkungn st. Yoseph-Batubulan",
+    name: "lingkungan st. Yoseph-Batubulan",
     kbgs: ["St. Madalena Canossa", "St. Theresia Avilla", "St. Maria Bunda Segala Bangsa"],
     password: "yoseph2026"
   },
@@ -77,17 +77,24 @@ const ACCOUNT_GROUPS: AccountGroup[] = [
 export default function LoginPage() {
   const router = useRouter();
   const { setCurrentUser } = useApp();
-  const [selectedGroupName, setSelectedGroupName] = useState("");
+  const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | "">("");
   const [selectedKbg, setSelectedKbg] = useState("");
   const [customGroupName, setCustomGroupName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
-  const handleGroupChange = (name: string) => {
-    setSelectedGroupName(name);
+  const handleGroupChange = (indexStr: string) => {
+    const idx = indexStr === "" ? "" : Number(indexStr);
+    setSelectedGroupIndex(idx);
     setSelectedKbg(""); // reset KBG selection
     setError("");
+    
+    if (idx !== "" && ACCOUNT_GROUPS[idx]?.password) {
+      setPassword(ACCOUNT_GROUPS[idx].password);
+    } else {
+      setPassword("");
+    }
   };
 
   // Toggle KBG selection (click again to deselect)
@@ -99,15 +106,16 @@ export default function LoginPage() {
     }
   };
 
-  const selectedGroup = ACCOUNT_GROUPS.find((g) => g.name === selectedGroupName);
+  const selectedGroup = selectedGroupIndex !== "" ? ACCOUNT_GROUPS[selectedGroupIndex] : undefined;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedGroupName) {
+    if (selectedGroupIndex === "" || !selectedGroup) {
       setError("Silakan pilih Lingkungan / Kategori terlebih dahulu.");
       return;
     }
 
+    const selectedGroupName = selectedGroup.name;
     let finalGroupName = selectedGroupName;
     if (selectedGroupName.startsWith("Lainnya")) {
       if (!customGroupName.trim()) {
@@ -134,10 +142,10 @@ export default function LoginPage() {
       : finalGroupName;
 
     // Stable ID based on the index in ACCOUNT_GROUPS
-    const groupIndex = ACCOUNT_GROUPS.findIndex((g) => g.name === selectedGroupName);
+    const groupIndex = typeof selectedGroupIndex === "number" ? selectedGroupIndex : 0;
 
     // Make ID unique for KBG vs Lingkungan so they have different data sessions
-    let stableId = groupIndex !== -1 ? groupIndex + 1 : 999;
+    let stableId = groupIndex + 1;
     if (selectedKbg && selectedGroup) {
       const kbgIndex = selectedGroup.kbgs.indexOf(selectedKbg);
       // KBG IDs will be in the 1000s, e.g., 1001, 1002, 2001, etc.
@@ -180,7 +188,7 @@ export default function LoginPage() {
         <div className="bg-white py-8 px-5 sm:py-10 sm:px-8 border border-slate-100 shadow-xl shadow-slate-200/50 rounded-3xl sm:rounded-4xl">
           <form className="space-y-5 sm:space-y-6" onSubmit={handleLogin}>
             {error && (
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-red-50 text-xs sm:text-sm text-red-600 border border-red-200/80 font-medium flex items-start gap-2.5 animate-in fade-in duration-200">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-red-50 text-xs sm:text-sm text-red-600 border border-red-200/80 font-medium flex items-start gap-2.5">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -199,13 +207,13 @@ export default function LoginPage() {
               <div className="relative">
                 <select
                   id="group-select"
-                  value={selectedGroupName}
+                  value={selectedGroupIndex}
                   onChange={(e) => handleGroupChange(e.target.value)}
                   className="block w-full px-4 py-3 sm:py-3.5 pr-10 border border-slate-200 rounded-2xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary text-base sm:text-sm font-medium transition-all bg-white appearance-none cursor-pointer shadow-xs"
                 >
                   <option value="">-- Pilih Lingkungan / Kategori --</option>
                   {ACCOUNT_GROUPS.map((group, idx) => (
-                    <option key={idx} value={group.name}>
+                    <option key={idx} value={idx}>
                       {group.name}
                     </option>
                   ))}
@@ -219,8 +227,8 @@ export default function LoginPage() {
             </div>
 
             {/* Manual input if "Lainnya" is selected */}
-            {selectedGroupName.startsWith("Lainnya") && (
-              <div className="animate-in fade-in duration-200">
+            {selectedGroup && selectedGroup.name.startsWith("Lainnya") && (
+              <div>
                 <label
                   htmlFor="custom-group"
                   className="block text-xs sm:text-sm font-semibold text-slate-800 mb-2"
@@ -241,7 +249,7 @@ export default function LoginPage() {
 
             {/* KBG Sub-Selection (Radio Buttons) */}
             {selectedGroup && selectedGroup.kbgs.length > 0 && (
-              <div className="animate-in fade-in duration-200 bg-slate-50/70 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100">
+              <div className="bg-slate-50/70 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100">
                 <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-2.5">
                   Pilih KBG (Opsional - Klik lagi untuk batal)
                 </label>

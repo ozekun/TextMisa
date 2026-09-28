@@ -138,20 +138,20 @@ function DashboardHome() {
   const handleArchiveMisa = async (misaId: number) => {
     Swal.fire({
       title: "Hapus Jadwal Misa?",
-
+      text: "Jadwal misa ini akan dipindahkan ke halaman Riwayat.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Hapus",
+      confirmButtonText: "Ya, Hapus",
       cancelButtonText: "Batal",
       confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#1b3151ff",
+      cancelButtonColor: "#64748b",
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
           await updateMisaStatus(misaId, "Selesai");
           Swal.fire({
-            title: "Berhasil Terhapus",
-
+            title: "Berhasil!",
+            text: "Jadwal misa telah dipindahkan ke halaman Riwayat.",
             icon: "success",
             timer: 1500,
             showConfirmButton: false,
@@ -159,7 +159,7 @@ function DashboardHome() {
         } catch (err) {
           Swal.fire({
             title: "Gagal!",
-            text: "Gagal mengarsipkan jadwal misa.",
+            text: "Gagal memindahkan jadwal misa ke riwayat.",
             icon: "error",
           });
         }

@@ -8,7 +8,7 @@ import Swal from "sweetalert2";
 import dynamic from "next/dynamic";
 
 function RiwayatPage() {
-  const { currentUser, misaList, updateMisaStatus } = useApp();
+  const { currentUser, misaList, updateMisaStatus, deleteMisa } = useApp();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
@@ -87,6 +87,52 @@ function RiwayatPage() {
     });
   };
 
+  const handleDelete = async (id: number, jenisPerayaan: string) => {
+    const swalWithBootstrapButtons = Swal.mixin({
+      customClass: {
+        confirmButton: "px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-bold transition-all shadow-sm mx-1 active:scale-95 cursor-pointer",
+        cancelButton: "px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-2xl text-xs font-bold transition-all shadow-sm mx-1 active:scale-95 cursor-pointer"
+      },
+      buttonsStyling: false
+    });
+
+    swalWithBootstrapButtons.fire({
+      title: "Hapus Permanen Riwayat Misa?",
+      html: `Perayaan <b>"${jenisPerayaan}"</b> beserta seluruh teks lagu liturginya akan <b>dihapus secara permanen</b> dari web dan database Supabase.<br/><br/><span class="text-rose-600 font-medium text-xs">Perhatian: Tindakan ini tidak dapat dibatalkan!</span>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Ya, Hapus Permanen",
+      cancelButtonText: "Batal",
+      reverseButtons: true
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const success = await deleteMisa(id);
+          if (success) {
+            await swalWithBootstrapButtons.fire({
+              title: "Berhasil Dihapus!",
+              text: "Data Misa dan seluruh lagu terkait telah dihapus permanen.",
+              icon: "success",
+              confirmButtonText: "OK"
+            });
+          } else {
+            Swal.fire({
+              title: "Gagal!",
+              text: "Terjadi kesalahan saat menghapus data dari database.",
+              icon: "error"
+            });
+          }
+        } catch (err) {
+          Swal.fire({
+            title: "Gagal!",
+            text: "Gagal menghapus data Misa.",
+            icon: "error"
+          });
+        }
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <DashboardNavbar />
@@ -145,16 +191,37 @@ function RiwayatPage() {
                     </span>
                   </div>
 
-                  {/* Action Button */}
-                  <div className="pt-1">
+                  {/* Action Buttons */}
+                  {/* Action Buttons */}
+                  <div className="pt-1 flex items-center gap-2">
                     <button
                       onClick={() => handleRestore(misa.id)}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-700 border border-amber-200/80 rounded-2xl text-xs font-bold transition-all shadow-2xs active:scale-[0.99] cursor-pointer"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-700 border border-amber-200/80 rounded-2xl text-xs font-bold transition-all shadow-2xs active:scale-[0.99] cursor-pointer"
                     >
                       <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                       <span>Pulihkan Riwayat</span>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(misa.id, misa.jenis_perayaan)}
+                      className="p-2.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 border border-red-100/80 rounded-2xl transition-all shadow-2xs active:scale-95 flex items-center justify-center shrink-0 cursor-pointer"
+                      title="Hapus Permanen dari Database"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        stroke="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                        />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -192,12 +259,35 @@ function RiwayatPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleRestore(misa.id)}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-amber-50 hover:bg-amber-100/80 text-amber-700 border border-amber-200/70 rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
-                          >
-                            Pulihkan Riwayat
-                          </button>
+                          <div className="flex items-center justify-end gap-2.5">
+                            <button
+                              onClick={() => handleRestore(misa.id)}
+                              className="inline-flex items-center justify-center px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/80 rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+                              title="Pulihkan ke status Belum Siap (Draft)"
+                            >
+                              Pulihkan Riwayat
+                            </button>
+                            <button
+                              onClick={() => handleDelete(misa.id, misa.jenis_perayaan)}
+                              className="p-2 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 rounded-xl transition-all border border-red-100/80 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                              title="Hapus Permanen dari Database"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={2}
+                                stroke="currentColor"
+                                className="w-4 h-4"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                                />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

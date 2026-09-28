@@ -13,13 +13,13 @@ interface PageProps {
 }
 
 const LITURGY_SECTIONS = [
-  { key: "Pembukaan", label: "1. Pembukaan", ordinarium: false, multi: false, isReading: false },
+  { key: "Pembukaan", label: "1. Pembukaan", ordinarium: false, multi: true, isReading: false },
   { key: "Kyrie", label: "2. Tuhan Kasihanilah (Kyrie)", ordinarium: true, multi: false, isReading: false },
   { key: "Gloria", label: "3. Kemuliaan (Gloria)", ordinarium: true, multi: false, isReading: false },
   { key: "Bacaan 1", label: "4. Bacaan 1", ordinarium: false, multi: false, isReading: true },
   { key: "Bacaan 2", label: "5. Bacaan 2", ordinarium: false, multi: false, isReading: true },
   { key: "Injil", label: "6. Injil", ordinarium: false, multi: false, isReading: true },
-  { key: "Persembahan", label: "7. Persembahan", ordinarium: false, multi: false, isReading: false },
+  { key: "Persembahan", label: "7. Persembahan", ordinarium: false, multi: true, isReading: false },
   { key: "Sanctus", label: "8. Kudus (Sanctus)", ordinarium: true, multi: false, isReading: false },
   { key: "Agnus Dei", label: "9. Anak Domba (Agnus Dei)", ordinarium: true, multi: false, isReading: false },
   { key: "Komuni", label: "10. Komuni", ordinarium: false, multi: true, isReading: false },
@@ -36,6 +36,25 @@ function formatScriptureSource(text: string): string {
   });
 }
 
+const ORDINARIUM_TEMPLATES: Record<string, { judul: string, teks: string }> = {
+  "Kyrie": {
+    judul: "Tuhan Kasihanilah Kami",
+    teks: `Tuhan kasihanilah kami\n\nTuhan kasihanilah kami\n\nKristus kasihanilah kami\n\nKristus kasihanilah kami\n\nTuhan kasihanilah kami\n\nTuhan kasihanilah kami`
+  },
+  "Gloria": {
+    judul: "Kemuliaan",
+    teks: `Kemuliaan kepada Allah di surga\n\ndan damai di bumi\nkepada orang yang berkenan pada-Nya.\n\nKami memuji Engkau.\n\nKami luhurkan Engkau.\n\nKami menyembah Engkau.\n\nKami memuliakan Engkau.\n\nKami bersyukur kepada-Mu\nkarena kemuliaan-Mu yang besar.\n\nYa Tuhan Allah, Raja surga,\nAllah Bapa yang Mahakuasa.\n\nYa Tuhan Yesus Kristus,\nPutra yang tunggal.\n\nYa Tuhan Allah, Anak Domba Allah,\nPutra Bapa.\n\nEngkau yang menghapus dosa dunia,\nkasihanilah kami.\n\nEngkau yang menghapus dosa dunia,\nkabulkanlah doa kami.\n\nEngkau yang duduk di sisi Bapa,\nkasihanilah kami.\n\nKarena hanya Engkaulah kudus.\n\nHanya Engkaulah Tuhan.\n\nHanya Engkaulah Mahatinggi,\nya Yesus Kristus.\n\nBersama dengan Roh Kudus,\ndalam kemuliaan Allah Bapa. Amin.`
+  },
+  "Sanctus": {
+    judul: "Kudus",
+    teks: `Kudus, kudus, kuduslah Tuhan\nAllah segala kuasa\n\nSurga dan bumi penuh kemuliaan-Mu\nTerpujilah Engkau di surga\n\nDiberkatilah yang datang dalam nama Tuhan\nTerpujilah Engkau di surga`
+  },
+  "Agnus Dei": {
+    judul: "Anak Domba Allah",
+    teks: `Anak Domba Allah\n\nYang menghapus dosa dunia\n\nKasihanilah kami,\nkasihanilah kami\n\nAnak Domba Allah\n\nYang menghapus dosa dunia\n\nKasihanilah kami,\nkasihanilah kami\n\nAnak Domba Allah\n\nYang menghapus dosa dunia\n\nBerilah kami damai,\nberilah kami damai`
+  }
+};
+
 function WorkspacePage({ params }: PageProps) {
   const router = useRouter();
   const resolvedParams = use(params);
@@ -49,6 +68,9 @@ function WorkspacePage({ params }: PageProps) {
   // Song state for the active tab
   const [songsInTab, setSongsInTab] = useState<LaguMisa[]>([]);
   const [activeSongIndex, setActiveSongIndex] = useState(0); // for Multi-Lagu
+
+  // Custom template tracking
+  const [isManualOrdinarium, setIsManualOrdinarium] = useState(false);
 
   // Preview Slide Index
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -87,24 +109,35 @@ function WorkspacePage({ params }: PageProps) {
 
     const allMisaSongs = getMisaSongs(misaId);
     const filtered = allMisaSongs.filter((s) => s.kategori === activeTab);
+    const template = ORDINARIUM_TEMPLATES[activeTab];
 
     if (filtered.length > 0) {
       // Sort by urutan_lagu
       const sorted = [...filtered].sort((a, b) => a.urutan_lagu - b.urutan_lagu);
       setSongsInTab(sorted);
+
+      if (template) {
+        // Check if the saved text matches the template. If not, it's manual mode.
+        setIsManualOrdinarium(sorted[0].teks_ayat_1 !== template.teks);
+      } else {
+        setIsManualOrdinarium(true);
+      }
     } else {
       let defaultJudul = "";
       let defaultTeks = "";
 
-      if (activeTab === "Agnus Dei") {
-        defaultJudul = "Anak Domba Allah";
-        defaultTeks = `Anak Domba Allah\n\nYang menghapus dosa dunia\n\nKasihanilah kami,\nkasihanilah kami\n\nAnak Domba Allah\n\nYang menghapus dosa,\ndosa-dosa dunia\n\nKasihanilah kami,\nkasihanilah kami,\n\nkasihanilah kami\n\nAnak Domba Allah\n\nYang menghapus dosa dunia\n\nBerilah kami damai,\n\nberilah kami damai`;
+      if (template) {
+        defaultJudul = template.judul;
+        defaultTeks = template.teks;
+        setIsManualOrdinarium(false); // Default to template for new ordinarium
       } else if (activeTab === "Bacaan 1") {
         defaultJudul = "Bacaan 1";
       } else if (activeTab === "Bacaan 2") {
         defaultJudul = "Bacaan 2";
       } else if (activeTab === "Injil") {
         defaultJudul = "Bacaan Injil";
+      } else {
+        setIsManualOrdinarium(true);
       }
 
       // Initialize with one default blank song
@@ -385,157 +418,157 @@ function WorkspacePage({ params }: PageProps) {
     // 3. Format setiap lagu menjadi Item SPX berdasarkan urutan LITURGY_SECTIONS
     const items: any[] = [];
 
-        LITURGY_SECTIONS.forEach((section) => {
-          const songsInSection = currentSongs.filter(s => s.kategori === section.key);
+    LITURGY_SECTIONS.forEach((section) => {
+      const songsInSection = currentSongs.filter(s => s.kategori === section.key);
 
-          if (songsInSection.length > 0) {
-            // Urutkan berdasarkan urutan_lagu
-            songsInSection.sort((a, b) => a.urutan_lagu - b.urutan_lagu).forEach((song) => {
-              const parsedAdditionalVerses = song.json_ayat_tambahan ? JSON.parse(song.json_ayat_tambahan) : [];
-              const slides = generateSlideSequence({
-                kategori: song.kategori,
-                teksReff: song.teks_reff,
-                teksAyat1: song.teks_ayat_1,
-                ayatTambahan: parsedAdditionalVerses,
-                susunanNyanyi: song.susunan_nyanyi,
-              });
+      if (songsInSection.length > 0) {
+        // Urutkan berdasarkan urutan_lagu
+        songsInSection.sort((a, b) => a.urutan_lagu - b.urutan_lagu).forEach((song) => {
+          const parsedAdditionalVerses = song.json_ayat_tambahan ? JSON.parse(song.json_ayat_tambahan) : [];
+          const slides = generateSlideSequence({
+            kategori: song.kategori,
+            teksReff: song.teks_reff,
+            teksAyat1: song.teks_ayat_1,
+            ayatTambahan: parsedAdditionalVerses,
+            susunanNyanyi: song.susunan_nyanyi,
+          });
 
-              let f0_val = song.header_buku || "";
-              let f1_val = slides.length > 0 ? slides.map(slide => slide.text).join("\n\n\n") : "[Lirik belum diisi]";
-              let f2_val = song.judul_lagu || section.key;
+          let f0_val = song.header_buku || "";
+          let f1_val = slides.length > 0 ? slides.map(slide => slide.text).join("\n\n\n") : "[Lirik belum diisi]";
+          let f2_val = song.judul_lagu || section.key;
 
-              let listName = section.key;
+          let listName = section.key;
 
-              if (section.isReading) {
-                let judulBacaan = "";
-                if (section.key === "Bacaan 1") {
-                  listName = "Bacaan 1";
-                  judulBacaan = "Bacaan Pertama";
-                } else if (section.key === "Bacaan 2") {
-                  listName = "Bacaan 2";
-                  judulBacaan = "Bacaan Kedua";
-                } else if (section.key === "Injil") {
-                  listName = "Bacaan Injil";
-                  judulBacaan = "Injil";
-                }
-
-                f0_val = judulBacaan;
-                f1_val = song.header_buku ? formatScriptureSource(song.header_buku) : "";
-                f2_val = "";
-              }
-
-              items.push({
-                DataFields: [
-                  { field: "comment", value: section.isReading ? listName : `${section.key} - ${f2_val}` },
-                  { field: "f0", value: f0_val ? `<span style="font-size: 1.2em;">${f0_val}</span>` : "" },
-                  { field: "f1", value: f1_val },
-                  { field: "f2", value: f2_val },
-                  { field: "f3", value: "none" },
-                  { field: "f4", value: "gfxCenter" }
-                ]
-              });
-            });
-          } else {
-            // Jika kategori ini belum ada isinya sama sekali, buatkan placeholder
-            let emptyF0 = ""; // nomor lagu / sumber kitab
-            let emptyF1 = section.isReading ? "" : "[Lagu belum diisi]";
-            let emptyF2 = section.key; // judul lagu / kategori liturgi
-            let emptyList = section.key;
-            if (section.isReading) {
-              if (section.key === "Bacaan 1") { emptyList = "Bacaan Pertama"; emptyF0 = "Bacaan Pertama"; }
-              else if (section.key === "Bacaan 2") { emptyList = "Bacaan Kedua"; emptyF0 = "Bacaan Kedua"; }
-              else if (section.key === "Injil") { emptyList = "Bacaan Injil"; emptyF0 = "Injil"; }
-              emptyF1 = "";
-              emptyF2 = "";
+          if (section.isReading) {
+            let judulBacaan = "";
+            if (section.key === "Bacaan 1") {
+              listName = "Bacaan 1";
+              judulBacaan = "Bacaan Pertama";
+            } else if (section.key === "Bacaan 2") {
+              listName = "Bacaan 2";
+              judulBacaan = "Bacaan Kedua";
+            } else if (section.key === "Injil") {
+              listName = "Bacaan Injil";
+              judulBacaan = "Injil";
             }
 
-            items.push({
-              DataFields: [
-                { field: "comment", value: section.isReading ? `[KOSONG] ${emptyList}` : `[KOSONG] ${section.key}` },
-                { field: "f0", value: emptyF0 ? `<span style="font-size: 1.2em;">${emptyF0}</span>` : "" },
-                { field: "f1", value: emptyF1 },
-                { field: "f2", value: emptyF2 },
-                { field: "f3", value: "none" },
-                { field: "f4", value: "gfxCenter" }
-              ]
-            });
+            f0_val = judulBacaan;
+            f1_val = song.header_buku ? formatScriptureSource(song.header_buku) : "";
+            f2_val = "";
           }
 
-          // Sisipkan teks Aklamasi Anamnesis secara otomatis setelah Sanctus (tanpa tampil di web)
-          if (section.key === "Sanctus") {
-            const anamnesis1 = `Wafat-Mu Tuhan\n\n\nkami wartakan\n\n\nKebangkitan-Mu\n\n\nkami muliakan\n\n\nhingga Engkau datang`;
-            const anamnesis2 = `Setiap kali kami makan roti ini\n\n\ndan minum dari piala ini\n\n\nwafat-Mu Tuhan, kami wartakan\n\n\nhingga Engkau datang`;
-            const anamnesis3 = `Penyelamat dunia\n\n\nSelamatkanlah kami\n\n\nKarena melalui salib\n\n\ndan kebangkitan-Mu\n\n\nEngkau telah membebaskan kami`;
-
-            const anamnesisList = [
-              { title: "Wafat-Mu Tuhan", header: "Anamnesis 1", text: anamnesis1 },
-              { title: "Setiap kali", header: "Anamnesis 2a & 2b", text: anamnesis2 },
-              { title: "Penyelamat dunia", header: "Anamnesis 3a & 3b", text: anamnesis3 }
-            ];
-
-            anamnesisList.forEach((item) => {
-              items.push({
-                DataFields: [
-                  { field: "comment", value: `Anamnesis - ${item.title}` },
-                  { field: "f0", value: item.title ? `<span style="font-size: 1.2em;">${item.title}</span>` : "" },
-                  { field: "f1", value: item.text },
-                  { field: "f2", value: item.header },
-                  { field: "f3", value: "none" },
-                  { field: "f4", value: "gfxCenter" }
-                ]
-              });
-            });
-          }
-        });
-
-        // Tambahkan nama pastor paroki secara otomatis di akhir rundown (setelah Penutup)
-        items.push(
-          {
+          items.push({
             DataFields: [
-              { field: "comment", value: "Pastor - RD. Yulius Kehi" },
-              { field: "f0", value: "" },
-              { field: "f1", value: "RD. Yulius Kehi" },
-              { field: "f2", value: "" },
+              { field: "comment", value: section.isReading ? listName : `${section.key} - ${f2_val}` },
+              { field: "f0", value: f0_val ? `<span style="font-size: 1.2em;">${f0_val}</span>` : "" },
+              { field: "f1", value: f1_val },
+              { field: "f2", value: f2_val },
               { field: "f3", value: "none" },
-              { field: "f4", value: "gfxLeft" }
+              { field: "f4", value: "gfxCenter" }
             ]
-          },
-          {
-            DataFields: [
-              { field: "comment", value: "Pastor - RD. Dr. Dominikus Gusti Bagus Kusumawanta" },
-              { field: "f0", value: "" },
-              { field: "f1", value: "RD. Dr. Dominikus Gusti Bagus Kusumawanta" },
-              { field: "f2", value: "" },
-              { field: "f3", value: "none" },
-              { field: "f4", value: "gfxLeft" }
-            ]
-          }
-        );
-
-        // 4. Format Nama File: tgl,bulan - KBG
-        const dateObj = new Date(activeMisa.tanggal);
-        const tgl = dateObj.getDate();
-        const bulanArr = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-        const bulan = bulanArr[dateObj.getMonth()];
-        const kbg = currentUser?.nama_kbg || "Lingkungan";
-
-        let rawFilename = `${tgl} ${bulan} - ${kbg}`;
-        const safeFilename = rawFilename.replace(/[<>:"/\\|?*]/g, '_'); // Bersihkan karakter ilegal OS
-
-        const payload = {
-          filename: safeFilename,
-          items: items
-        };
-
-        const response = await fetch("/api/spx/export", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+          });
         });
+      } else {
+        // Jika kategori ini belum ada isinya sama sekali, buatkan placeholder
+        let emptyF0 = ""; // nomor lagu / sumber kitab
+        let emptyF1 = section.isReading ? "" : "[Lagu belum diisi]";
+        let emptyF2 = section.key; // judul lagu / kategori liturgi
+        let emptyList = section.key;
+        if (section.isReading) {
+          if (section.key === "Bacaan 1") { emptyList = "Bacaan Pertama"; emptyF0 = "Bacaan Pertama"; }
+          else if (section.key === "Bacaan 2") { emptyList = "Bacaan Kedua"; emptyF0 = "Bacaan Kedua"; }
+          else if (section.key === "Injil") { emptyList = "Bacaan Injil"; emptyF0 = "Injil"; }
+          emptyF1 = "";
+          emptyF2 = "";
+        }
 
-        const data = await response.json();
+        items.push({
+          DataFields: [
+            { field: "comment", value: section.isReading ? `[KOSONG] ${emptyList}` : `[KOSONG] ${section.key}` },
+            { field: "f0", value: emptyF0 ? `<span style="font-size: 1.2em;">${emptyF0}</span>` : "" },
+            { field: "f1", value: emptyF1 },
+            { field: "f2", value: emptyF2 },
+            { field: "f3", value: "none" },
+            { field: "f4", value: "gfxCenter" }
+          ]
+        });
+      }
+
+      // Sisipkan teks Aklamasi Anamnesis secara otomatis setelah Sanctus (tanpa tampil di web)
+      if (section.key === "Sanctus") {
+        const anamnesis1 = `Wafat-Mu Tuhan\n\n\nkami wartakan\n\n\nKebangkitan-Mu\n\n\nkami muliakan\n\n\nhingga Engkau datang`;
+        const anamnesis2 = `Setiap kali kami makan roti ini\n\n\ndan minum dari piala ini\n\n\nwafat-Mu Tuhan, kami wartakan\n\n\nhingga Engkau datang`;
+        const anamnesis3 = `Penyelamat dunia\n\n\nSelamatkanlah kami\n\n\nKarena melalui salib\n\n\ndan kebangkitan-Mu\n\n\nEngkau telah membebaskan kami`;
+
+        const anamnesisList = [
+          { title: "Wafat-Mu Tuhan", header: "Anamnesis 1", text: anamnesis1 },
+          { title: "Setiap kali", header: "Anamnesis 2a & 2b", text: anamnesis2 },
+          { title: "Penyelamat dunia", header: "Anamnesis 3a & 3b", text: anamnesis3 }
+        ];
+
+        anamnesisList.forEach((item) => {
+          items.push({
+            DataFields: [
+              { field: "comment", value: `Anamnesis - ${item.title}` },
+              { field: "f0", value: item.title ? `<span style="font-size: 1.2em;">${item.title}</span>` : "" },
+              { field: "f1", value: item.text },
+              { field: "f2", value: item.header },
+              { field: "f3", value: "none" },
+              { field: "f4", value: "gfxCenter" }
+            ]
+          });
+        });
+      }
+    });
+
+    // Tambahkan nama pastor paroki secara otomatis di akhir rundown (setelah Penutup)
+    items.push(
+      {
+        DataFields: [
+          { field: "comment", value: "Pastor - RD. Yulius Kehi" },
+          { field: "f0", value: "" },
+          { field: "f1", value: "RD. Yulius Kehi" },
+          { field: "f2", value: "" },
+          { field: "f3", value: "none" },
+          { field: "f4", value: "gfxLeft" }
+        ]
+      },
+      {
+        DataFields: [
+          { field: "comment", value: "Pastor - RD. Dr. Dominikus Gusti Bagus Kusumawanta" },
+          { field: "f0", value: "" },
+          { field: "f1", value: "RD. Dr. Dominikus Gusti Bagus Kusumawanta" },
+          { field: "f2", value: "" },
+          { field: "f3", value: "none" },
+          { field: "f4", value: "gfxLeft" }
+        ]
+      }
+    );
+
+    // 4. Format Nama File: tgl,bulan - KBG
+    const dateObj = new Date(activeMisa.tanggal);
+    const tgl = dateObj.getDate();
+    const bulanArr = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const bulan = bulanArr[dateObj.getMonth()];
+    const kbg = currentUser?.nama_kbg || "Lingkungan";
+
+    let rawFilename = `${tgl} ${bulan} - ${kbg}`;
+    const safeFilename = rawFilename.replace(/[<>:"/\\|?*]/g, '_'); // Bersihkan karakter ilegal OS
+
+    const payload = {
+      filename: safeFilename,
+      items: items
+    };
+
+    const response = await fetch("/api/spx/export", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
 
     if (!response.ok) {
       throw new Error(data.error || "Gagal mengirim ke SPX Server");
@@ -627,11 +660,8 @@ function WorkspacePage({ params }: PageProps) {
               <>
                 <button
                   onClick={handlePublish}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:px-5 sm:py-2.5 bg-brand-primary hover:bg-brand-hover text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+                  className="inline-flex items-center justify-center px-3 py-2 sm:px-5 sm:py-2.5 bg-brand-primary hover:bg-brand-hover text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
                 >
-                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
                   <span>Simpan<span className="hidden sm:inline"> Lagu</span></span>
                 </button>
                 <button
@@ -642,7 +672,7 @@ function WorkspacePage({ params }: PageProps) {
                   <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  <span className="hidden sm:inline">Hapus</span>
+
                 </button>
               </>
             )}
@@ -678,7 +708,7 @@ function WorkspacePage({ params }: PageProps) {
                   Pengisian Lagu Liturgi
                 </h2>
                 <p className="text-xs text-text-sec mt-0.5">
-                  Lengkapi lirik lagu untuk bagian liturgi <strong>{activeTab}</strong>
+                  Lengkapi lirik lagu untuk bagian liturgi
                 </p>
               </div>
 
@@ -808,17 +838,76 @@ function WorkspacePage({ params }: PageProps) {
                 {/* Verses (Teks Ayat 1) - Hidden for Readings */}
                 {!activeSection.isReading && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1.5 flex justify-between">
+                    <label className="block text-xs font-bold text-slate-800 mb-2 flex justify-between items-end">
                       <span>
                         {activeSection.ordinarium ? "Teks Ordinarium" : "Teks Ayat 1"}
                       </span>
                       <span className="text-[10px] text-text-sec font-medium">Batas baris: otomatis per 2 baris</span>
                     </label>
+
+                    {/* Ordinarium Mode Toggle */}
+                    {activeSection.ordinarium && (
+                      <div className="flex items-center gap-3.5 mb-4 bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 w-fit">
+                        <span
+                          onClick={() => {
+                            if (!isManualOrdinarium) return; // already standard
+                            setIsManualOrdinarium(false);
+                            const template = ORDINARIUM_TEMPLATES[activeTab];
+                            if (template) {
+                              setSongsInTab(prev => prev.map((s, i) => i === activeSongIndex ? { ...s, judul_lagu: template.judul, teks_ayat_1: template.teks, header_buku: "" } : s));
+                              setCurrentSlideIndex(0);
+                            }
+                          }}
+                          className={`text-[11px] font-extrabold uppercase tracking-wide transition-colors cursor-pointer ${!isManualOrdinarium ? "text-slate-700" : "text-slate-400"}`}
+                        >
+
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newValue = !isManualOrdinarium;
+                            setIsManualOrdinarium(newValue);
+
+                            if (!newValue) { // Switching back to template
+                              const template = ORDINARIUM_TEMPLATES[activeTab];
+                              if (template) {
+                                setSongsInTab(prev => prev.map((s, i) => i === activeSongIndex ? { ...s, judul_lagu: template.judul, teks_ayat_1: template.teks, header_buku: "" } : s));
+                                setCurrentSlideIndex(0);
+                              }
+                            } else { // Switching to manual
+                              setSongsInTab(prev => prev.map((s, i) => i === activeSongIndex ? { ...s, judul_lagu: "", header_buku: "", teks_ayat_1: "" } : s));
+                              setCurrentSlideIndex(0);
+                            }
+                          }}
+                          className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out shadow-inner ${isManualOrdinarium ? 'bg-brand-primary' : 'bg-slate-300'
+                            }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${isManualOrdinarium ? 'translate-x-7' : 'translate-x-0'
+                              }`}
+                          />
+                        </button>
+
+                        <span
+                          onClick={() => {
+                            if (isManualOrdinarium) return; // already manual
+                            setIsManualOrdinarium(true);
+                            setSongsInTab(prev => prev.map((s, i) => i === activeSongIndex ? { ...s, judul_lagu: "", header_buku: "", teks_ayat_1: "" } : s));
+                            setCurrentSlideIndex(0);
+                          }}
+                          className={`text-[11px] font-extrabold uppercase tracking-wide transition-colors cursor-pointer ${isManualOrdinarium ? "text-brand-primary" : "text-slate-400"}`}
+                        >
+                          Input Manual
+                        </span>
+                      </div>
+                    )}
+
                     <textarea
-                      rows={4}
+                      rows={activeSection.ordinarium ? 8 : 4}
                       placeholder={
                         activeSection.ordinarium
-                          ? "Masukkan lirik ordinarium lengkap..."
+                          ? (isManualOrdinarium ? "Ketik lirik ordinarium bahasa asing/manual di sini..." : "Lirik standar (bisa disesuaikan manual)...")
                           : "Masukkan lirik Ayat 1..."
                       }
                       value={currentSong.teks_ayat_1 || ""}
@@ -826,7 +915,7 @@ function WorkspacePage({ params }: PageProps) {
                         updateSongField(activeSongIndex, "teks_ayat_1", e.target.value);
                         setCurrentSlideIndex(0);
                       }}
-                      className="block w-full px-4 py-3 border border-slate-200 rounded-2xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all font-mono"
+                      className="block w-full px-4 py-3.5 border rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all font-mono leading-relaxed tracking-wide bg-white border-slate-200 text-slate-900 focus:border-brand-primary"
                     />
                   </div>
                 )}
@@ -903,9 +992,7 @@ function WorkspacePage({ params }: PageProps) {
               <h2 className="text-lg font-black text-slate-900 tracking-tight">
                 Pratinjau / Preview
               </h2>
-              <p className="text-xs text-text-sec mt-0.5">
-                Representasi tampilan running teks pada layar siaran
-              </p>
+
             </div>
 
             {/* SPX Monitor Box */}
@@ -916,10 +1003,8 @@ function WorkspacePage({ params }: PageProps) {
               {/* Top info badge */}
               <div className="flex items-center justify-between text-[10px] text-slate-400 z-10 font-mono">
                 <span>PREVIEW CHANNEL</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  SPX ONLINE
-                </span>
+
+
               </div>
 
               {/* Lower-third Overlay mockup */}
@@ -1012,17 +1097,15 @@ function WorkspacePage({ params }: PageProps) {
             {/* Actions card */}
             <div className="bg-white border border-teal-100/30 rounded-3xl p-6 shadow-sm space-y-4">
               <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                Bagian Akhir
+                KIRIM KE SISTEM.
               </h3>
-              <p className="text-[11px] text-text-sec leading-relaxed">
-                Kirimkan slide lirik lagu langsung ke sistem.
-              </p>
+
 
               <button
                 onClick={handleSendToSpx}
                 className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-100 disabled:text-slate-400 text-white rounded-2xl text-xs font-bold transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 active:scale-[0.98]"
               >
-                Kirim Teks ke Sistem
+                KIRIM SEKARANG
               </button>
 
               {showSpxNotification && (
@@ -1036,7 +1119,7 @@ function WorkspacePage({ params }: PageProps) {
             {previewSlides.length > 0 && (
               <div className="bg-white border border-teal-100/30 rounded-3xl p-6 shadow-sm space-y-3 max-h-[300px] flex flex-col">
                 <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider shrink-0">
-                  Daftar Slide Deck ({previewSlides.length})
+                  Daftar Slide ({previewSlides.length})
                 </h3>
                 <div className="overflow-y-auto space-y-1.5 flex-1 pr-1">
                   {previewSlides.map((slide, idx) => (

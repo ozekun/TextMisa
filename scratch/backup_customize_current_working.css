@@ -1,0 +1,142 @@
+/* Configurable colors and styles below.
+   Please refer to README.pdf for more info. */
+
+/* Font links */
+@font-face { font-family: "HEADLINE";   src: url("./fonts/MerriweatherSans-SemiBoldItalic.ttf" );}
+@font-face { font-family: "BODYTEXT";   src: url("./fonts/Merriweather-Regular.ttf" );}
+@font-face { font-family: "FOOTTEXT";      src: url("./fonts/MerriweatherSans-Regular.ttf" );}
+@font-face { font-family: "FOCUSTEXT";  src: url("./fonts/Merriweather-BlackItalic.ttf" );}
+@font-face { font-family: "VERSENRO";   src: url("./fonts/MerriweatherSans-SemiBoldItalic.ttf" );}
+
+
+:root {
+
+    /* Small headline textbox */
+    --head-textColor:   #2a1c00;
+    --head-txtShadow:   0px 0px 8px rgba(0,0,0,0.2); 
+    --head-backColor:   #ffa500;
+    --head-boxShadow:   2px 2px 15px 5px rgba(0,0,0,0.2); 
+
+    /* Main textbox colors. Note: background image will override backColor */
+    --main-textColor:   #000;
+    --main-backColor:   #fff;
+    --main-txtShadow:   0px 0px 4px rgba(200, 110, 25, 0.2); 
+
+    /* Footer text color within the main text box area */
+    --foot-textColor:   rgb(116, 47, 8);
+    --foot-txtShadow:   0px 0px 8px rgba(0,0,0,0.2);
+
+    /* Colors for extra styles, such as verse 'number' and 'focus' words */
+    --verse-nroColor:   rgb(240, 92, 6);
+    --focus-txtColor:   rgb(179, 99, 7);
+
+    /* Sizes */
+    --window-margin-v: 86px;
+    --window-margin-h: 100px;
+    --box-width-sides: 1200px;
+    --box-width-centr: 1250px;
+    /* Default
+    --window-margin-v: 86px;
+    --window-margin-h: 100px;
+    --box-width-sides: 1200px;
+    --box-width-centr: 1250px; */
+}
+
+
+/* ----------------------------------------------
+
+    If you are NOT 100% sure what you are doing,
+    you probably don't want to edit anything below.
+
+    But if you do, you might want to make a backup
+    copy of this file...   
+
+    - Justin Case
+    
+------------------------------------------------- */ 
+
+.HEADLINE {
+    font-family:        "HEADLINE";
+    font-size:          50px;
+    line-height:        40px;
+    color:              var(--head-textColor);
+    text-shadow:        var(--head-txtShadow);
+    background-color:   var(--head-backColor);
+    box-shadow:         var(--head-boxShadow);
+    z-index:            10; 
+    /* default z - index (10) */
+}
+
+.MAINTEXTBOX {
+    display:            block;
+    color:              var(--main-textColor);
+    text-shadow:        var(--main-txtShadow);
+}
+
+.FOOTERBOX {
+    font-family:        "FOOTTEXT";
+    font-size:          45px;
+    width:              100%;
+    color:              var(--foot-textColor);
+    text-shadow:        var(--foot-txtShadow);
+}
+
+
+
+/*
+   Below are CUSTOM <TAGS> for inline styling, such as
+
+   <FOCUS>   For emphasized words within the text such as:
+             I am Thine, O <FOCUS>Lord</FOCUS>
+
+   <NR>      For verse numbers in the beginning of a
+             paragraph. This makes texts easier to follow.
+             Example: <NR>1</NR>
+
+   Feel free to create more as needed by following the
+   principles of these provided example / default tags.
+   
+*/
+
+NR {
+    display:            inline;
+    font-size:          1.2em;
+    margin-right:       0.5em;
+    margin-bottom:      0.5em;
+    transform:          translateY(45%);
+    font-family:        "VERSENRO";
+    color:              var(--verse-nroColor);
+    text-shadow:        var(--main-txtShadow);
+    /*float: left;*/ /* useful as Drop Caps, left alignment only works*/
+}
+
+FOCUS {
+    font-family:        "FOCUSTEXT";
+    color:              var(--focus-txtColor);
+    text-shadow:        var(--main-txtShadow);
+}
+
+/* FIX UNTUK VMIX WEB BROWSER + NAIKKAN POSISI DARI BAWAH AGAR TEKS F2 TIDAK TERPOTONG */
+.f_center {
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 auto var(--window-margin-v, 86px) auto !important;
+    margin-bottom: var(--window-margin-v, 86px) !important;
+    transform: none !important;
+}
+
+/* JARAK ANTARA KOTAK KUNING & TEKS F1 */
+#textureZone {
+    padding-top: 3.8em !important;
+}
+
+/* JARAK DIANTARA TEKS F1 & FOOTER F2 */
+#footerZone {
+    margin-top: 2em !important;
+}
+
+/* KETIKA TIDAK ADA FOOTER F2 (BACAAN), SEIMBANGKAN PADDING BAWAH AGAR TEKS F1 DI TENGAH */
+#textureZone.no-footer,
+#textureZone:has(#footerZone[style*="display: none"]) {
+    padding-bottom: 3.8em !important;
+}
