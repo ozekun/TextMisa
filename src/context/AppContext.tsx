@@ -14,7 +14,7 @@ interface AppContextType {
   updateMisa: (misaId: number, data: Partial<JadwalMisa>) => Promise<boolean>;
   updateMisaStatus: (misaId: number, status: JadwalMisa["status"]) => Promise<void>;
   getMisaSongs: (misaId: number) => LaguMisa[];
-  saveMisaSongs: (misaId: number, categorySongs: Omit<LaguMisa, "id" | "created_at">[]) => Promise<void>;
+  saveMisaSongs: (misaId: number, categorySongs: Omit<LaguMisa, "id" | "created_at">[]) => Promise<boolean>;
   deleteMisa: (misaId: number) => Promise<boolean>;
 }
 
@@ -46,6 +46,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!currentUser) {
         setMisaList([]);
         setSongs([]);
+        setIsLoading(false);
         return;
       }
       
@@ -162,41 +163,68 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return songs.filter((s) => s.misa_id === misaId);
   };
 
-  const saveMisaSongs = async (misaId: number, categorySongs: Omit<LaguMisa, "id" | "created_at">[]) => {
-    if (categorySongs.length === 0) return;
+  const saveMisaSongs = async (misaId: number, categorySongs: Omit<LaguMisa, "id" | "created_at">[]): Promise<boolean> => {
+    if (categorySongs.length === 0) return true;
     const category = categorySongs[0].kategori;
 
-    const { error: deleteError } = await supabase
-      .from('lagu_misa')
-      .delete()
-      .eq('misa_id', misaId)
-      .eq('kategori', category);
-
-    if (deleteError) {
-      console.error("Error deleting old songs:", deleteError);
-      return;
-    }
+    // Simpan snapshot lagu saat ini untuk rollback jika terjadi kesalahan di database
+    const previousSongsForCategory = songs.filter(s => s.misa_id === misaId && s.kategori === category);
 
     const songsToInsert = categorySongs.map(song => {
       const { id, created_at, ...rest } = song as any;
       return rest;
     });
 
-    const { data, error: insertError } = await supabase
-      .from('lagu_misa')
-      .insert(songsToInsert)
-      .select();
+    try {
+      // 1. Hapus lagu lama untuk kategori ini
+      const { error: deleteError } = await supabase
+        .from('lagu_misa')
+        .delete()
+        .eq('misa_id', misaId)
+        .eq('kategori', category);
 
-    if (insertError) {
-      console.error("Error saving new songs:", insertError);
-      return;
-    }
+      if (deleteError) {
+        console.error("Error deleting old songs during save:", deleteError);
+        throw deleteError;
+      }
 
-    if (data) {
+      // 2. Masukkan lagu baru
+      const { data, error: insertError } = await supabase
+        .from('lagu_misa')
+        .insert(songsToInsert)
+        .select();
+
+      if (insertError) {
+        console.error("Error saving new songs during save:", insertError);
+        // ROLLBACK: Kembalikan data lama ke Supabase jika insert gagal setelah delete
+        if (previousSongsForCategory.length > 0) {
+          const rollbackPayload = previousSongsForCategory.map(s => {
+            const { id, created_at, ...rest } = s as any;
+            return rest;
+          });
+          await supabase.from('lagu_misa').insert(rollbackPayload);
+        }
+        throw insertError;
+      }
+
+      if (data) {
+        setSongs((prev) => {
+          const filtered = prev.filter(s => !(s.misa_id === misaId && s.kategori === category));
+          return [...filtered, ...data];
+        });
+      }
+      return true;
+    } catch (err) {
+      console.error("saveMisaSongs failed. Rolling back local state:", err);
+      // Rollback state lokal agar tidak sinkron dengan data yang rusak
       setSongs((prev) => {
-        const filtered = prev.filter(s => !(s.misa_id === misaId && s.kategori === category));
-        return [...filtered, ...data];
+        const hasSongs = prev.some(s => s.misa_id === misaId && s.kategori === category);
+        if (!hasSongs && previousSongsForCategory.length > 0) {
+          return [...prev, ...previousSongsForCategory];
+        }
+        return prev;
       });
+      return false;
     }
   };
 

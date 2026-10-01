@@ -60,14 +60,16 @@ function WorkspacePage({ params }: PageProps) {
   const resolvedParams = use(params);
   const misaId = parseInt(resolvedParams.id, 10);
 
-  const { currentUser, misaList, updateMisaStatus, getMisaSongs, saveMisaSongs } = useApp();
+  const { currentUser, misaList, updateMisaStatus, getMisaSongs, saveMisaSongs, isLoading, songs } = useApp();
 
   const [activeTab, setActiveTab] = useState("Pembukaan");
   const [activeMisa, setActiveMisa] = useState<any>(null);
 
   // Song state for the active tab
   const [songsInTab, setSongsInTab] = useState<LaguMisa[]>([]);
+  const [lastSavedSongs, setLastSavedSongs] = useState<LaguMisa[]>([]);
   const [activeSongIndex, setActiveSongIndex] = useState(0); // for Multi-Lagu
+  const [isDirty, setIsDirty] = useState(false);
 
   // Custom template tracking
   const [isManualOrdinarium, setIsManualOrdinarium] = useState(false);
@@ -75,7 +77,7 @@ function WorkspacePage({ params }: PageProps) {
   // Preview Slide Index
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showSpxNotification, setShowSpxNotification] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const [mounted, setMounted] = useState(false);
   const [hasAccess, setHasAccess] = useState(true);
@@ -86,7 +88,7 @@ function WorkspacePage({ params }: PageProps) {
 
   // Authenticate & load data
   useEffect(() => {
-    if (mounted) {
+    if (mounted && !isLoading) {
       const storedUser = localStorage.getItem("user");
       if (!storedUser) {
         router.push("/login");
@@ -101,11 +103,11 @@ function WorkspacePage({ params }: PageProps) {
         setHasAccess(false);
       }
     }
-  }, [currentUser, misaId, misaList, router, mounted]);
+  }, [currentUser, misaId, misaList, router, mounted, isLoading]);
 
-  // Load songs whenever the active tab changes
+  // Load songs whenever the active tab changes or initial load completes
   useEffect(() => {
-    if (!mounted || !activeMisa) return;
+    if (!mounted || isLoading || !activeMisa) return;
 
     const allMisaSongs = getMisaSongs(misaId);
     const filtered = allMisaSongs.filter((s) => s.kategori === activeTab);
@@ -115,6 +117,7 @@ function WorkspacePage({ params }: PageProps) {
       // Sort by urutan_lagu
       const sorted = [...filtered].sort((a, b) => a.urutan_lagu - b.urutan_lagu);
       setSongsInTab(sorted);
+      setLastSavedSongs(sorted);
 
       if (template) {
         // Check if the saved text matches the template. If not, it's manual mode.
@@ -153,30 +156,54 @@ function WorkspacePage({ params }: PageProps) {
         created_at: new Date().toISOString(),
       };
       setSongsInTab([blankSong]);
+      setLastSavedSongs([blankSong]);
     }
+    setIsDirty(false);
     setActiveSongIndex(0);
     setCurrentSlideIndex(0);
-  }, [activeTab, activeMisa]);
+  }, [activeTab, activeMisa, isLoading]);
 
-  // Auto-save effect (must be above early returns)
+  // Auto-save effect (hanya berjalan saat ada perubahan dari user / isDirty === true)
   useEffect(() => {
-    if (!mounted || !activeMisa || songsInTab.length === 0) return;
+    if (!mounted || isLoading || !activeMisa || !isDirty || songsInTab.length === 0) return;
 
+    setSaveStatus("saving");
     const timer = setTimeout(() => {
-      // Inline the call or make handleSaveTab safe to call
-      setSaveStatus("saving");
-      saveMisaSongs(misaId, songsInTab).then(() => {
-        setSaveStatus("saved");
-        setTimeout(() => {
-          setSaveStatus("idle");
-        }, 2500);
+      saveMisaSongs(misaId, songsInTab).then((success) => {
+        if (success) {
+          setSaveStatus("saved");
+          setIsDirty(false);
+          setLastSavedSongs(songsInTab);
+          setTimeout(() => {
+            setSaveStatus("idle");
+          }, 2500);
+        } else {
+          // ROLLBACK: Kembalikan data form ke snapshot terakhir yang tersimpan
+          setSaveStatus("error");
+          if (lastSavedSongs.length > 0) {
+            setSongsInTab(lastSavedSongs);
+          }
+          setIsDirty(false);
+          Swal.fire({
+            icon: "error",
+            title: "Gagal Menyimpan Otomatis",
+            text: "Terjadi gangguan jaringan. Data teks dikembalikan ke versi terakhir yang tersimpan (rollback).",
+            timer: 4000,
+            showConfirmButton: false,
+            toast: true,
+            position: "top-end"
+          });
+          setTimeout(() => {
+            setSaveStatus("idle");
+          }, 4000);
+        }
       });
-    }, 500); // Tunggu 0.5 detik setelah user selesai mengetik
+    }, 600); // Tunggu 600ms setelah user selesai mengetik
 
     return () => clearTimeout(timer);
-  }, [songsInTab, misaId, mounted, activeMisa]);
+  }, [songsInTab, misaId, mounted, isLoading, activeMisa, isDirty]);
 
-  if (!mounted) {
+  if (!mounted || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-teal-50/50">
         <div className="text-slate-500 font-medium">Memuat data Workspace...</div>
@@ -231,6 +258,7 @@ function WorkspacePage({ params }: PageProps) {
       return song;
     });
     setSongsInTab(updated);
+    setIsDirty(true);
   };
 
   // Handler to update additional verses (Non-Ordinarium)
@@ -272,6 +300,7 @@ function WorkspacePage({ params }: PageProps) {
     setSongsInTab([...songsInTab, newSong]);
     setActiveSongIndex(songsInTab.length);
     setCurrentSlideIndex(0);
+    setIsDirty(true);
   };
 
   const removeSongFromTab = (index: number) => {
@@ -285,6 +314,7 @@ function WorkspacePage({ params }: PageProps) {
     setSongsInTab(reindexed);
     setActiveSongIndex(Math.max(0, index - 1));
     setCurrentSlideIndex(0);
+    setIsDirty(true);
   };
 
   // Complete mass liturgy composition
@@ -856,6 +886,7 @@ function WorkspacePage({ params }: PageProps) {
                             if (template) {
                               setSongsInTab(prev => prev.map((s, i) => i === activeSongIndex ? { ...s, judul_lagu: template.judul, teks_ayat_1: template.teks, header_buku: "" } : s));
                               setCurrentSlideIndex(0);
+                              setIsDirty(true);
                             }
                           }}
                           className={`text-[11px] font-extrabold uppercase tracking-wide transition-colors cursor-pointer ${!isManualOrdinarium ? "text-slate-700" : "text-slate-400"}`}
@@ -879,6 +910,7 @@ function WorkspacePage({ params }: PageProps) {
                               setSongsInTab(prev => prev.map((s, i) => i === activeSongIndex ? { ...s, judul_lagu: "", header_buku: "", teks_ayat_1: "" } : s));
                               setCurrentSlideIndex(0);
                             }
+                            setIsDirty(true);
                           }}
                           className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out shadow-inner ${isManualOrdinarium ? 'bg-brand-primary' : 'bg-slate-300'
                             }`}
@@ -895,6 +927,7 @@ function WorkspacePage({ params }: PageProps) {
                             setIsManualOrdinarium(true);
                             setSongsInTab(prev => prev.map((s, i) => i === activeSongIndex ? { ...s, judul_lagu: "", header_buku: "", teks_ayat_1: "" } : s));
                             setCurrentSlideIndex(0);
+                            setIsDirty(true);
                           }}
                           className={`text-[11px] font-extrabold uppercase tracking-wide transition-colors cursor-pointer ${isManualOrdinarium ? "text-brand-primary" : "text-slate-400"}`}
                         >
@@ -974,6 +1007,12 @@ function WorkspacePage({ params }: PageProps) {
                     <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                       Tersimpan otomatis
+                    </span>
+                  )}
+                  {saveStatus === "error" && (
+                    <span className="text-xs font-bold text-red-600 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Gagal menyimpan (Data di-rollback)
                     </span>
                   )}
                   {saveStatus === "idle" && (
