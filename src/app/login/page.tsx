@@ -9,6 +9,7 @@ interface AccountGroup {
   name: string;
   kbgs: string[];
   password?: string;
+  isAdmin?: boolean;
 }
 
 const ACCOUNT_GROUPS: AccountGroup[] = [
@@ -72,6 +73,13 @@ const ACCOUNT_GROUPS: AccountGroup[] = [
     kbgs: [],
     password: "kategorial2026"
   }
+  ,
+  {
+    name: "Admin KOMSOS (komsos)",
+    kbgs: [],
+    password: "komsosparoki2026",
+    isAdmin: true
+  }
 ];
 
 export default function LoginPage() {
@@ -90,7 +98,7 @@ export default function LoginPage() {
     setSelectedKbg(""); // reset KBG selection
     setError("");
     
-    if (idx !== "" && ACCOUNT_GROUPS[idx]?.password) {
+    if (idx !== "" && ACCOUNT_GROUPS[idx]?.password && !ACCOUNT_GROUPS[idx]?.isAdmin) {
       setPassword(ACCOUNT_GROUPS[idx].password);
     } else {
       setPassword("");
@@ -136,6 +144,17 @@ export default function LoginPage() {
       return;
     }
 
+    if (selectedGroup.isAdmin) {
+      setCurrentUser({
+        id: 999999,
+        username: "komsos",
+        nama_kbg: "Admin KOMSOS",
+        role: "admin",
+      });
+      router.push("/dashboard/admin");
+      return;
+    }
+
     // Build the final display name: KBG Name or Lingkungan Name
     const displayName = selectedKbg
       ? `KBG ${selectedKbg}`
@@ -157,6 +176,7 @@ export default function LoginPage() {
       id: stableId,
       username: displayName.toLowerCase().replace(/\s+/g, "_"),
       nama_kbg: displayName,
+      role: "user",
     });
 
     // Redirect to dashboard

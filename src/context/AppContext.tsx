@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { JadwalMisa, LaguMisa, User } from "../types";
+import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
+import { DataLagu, JadwalMisa, LaguMisa, User } from "../types";
 import { supabase } from "../lib/supabaseClient";
+import { formatHeaderBuku, formatJudulLagu } from "../utils/songSplitter";
 
 interface AppContextType {
   currentUser: User | null;
@@ -16,6 +17,20 @@ interface AppContextType {
   getMisaSongs: (misaId: number) => LaguMisa[];
   saveMisaSongs: (misaId: number, categorySongs: Omit<LaguMisa, "id" | "created_at">[]) => Promise<boolean>;
   deleteMisa: (misaId: number) => Promise<boolean>;
+  searchDataLagu: (query: string, sourceType?: "ps" | "mb" | "teks") => Promise<{ data: DataLagu[]; error: boolean }>;
+  saveSongsToDataLagu: (
+    songsToSave: Pick<
+      LaguMisa,
+      "judul_lagu" | "header_buku" | "teks_reff" | "teks_ayat_1" | "json_ayat_tambahan" | "susunan_nyanyi"
+    >[]
+  ) => Promise<void>;
+  fetchDataLagu: () => Promise<{ data: DataLagu[]; error: boolean }>;
+  fetchDataLaguById: (id: number) => Promise<{ data: DataLagu | null; error: boolean }>;
+  updateDataLagu: (
+    id: number,
+    payload: Pick<DataLagu, "judul_lagu" | "header_buku" | "teks_reff" | "teks_ayat_1" | "json_ayat_tambahan" | "susunan_nyanyi">
+  ) => Promise<{ data: DataLagu | null; error: string | null }>;
+  deleteDataLagu: (id: number) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -228,6 +243,161 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const searchDataLagu = useCallback(async (query: string, sourceType?: "ps" | "mb" | "teks"): Promise<{ data: DataLagu[]; error: boolean }> => {
+    const cleanQuery = query.trim().replace(/[,()]/g, " ");
+    const minLength = sourceType === "ps" || sourceType === "mb" ? 1 : 2;
+    if (cleanQuery.length < minLength) return { data: [], error: false };
+
+    let request = supabase.from("data_lagu").select("*");
+
+    if (sourceType === "ps") {
+      const digits = cleanQuery.replace(/\D/g, "");
+      if (!digits) return { data: [], error: false };
+      request = request
+        .or("header_buku.ilike.%puji syukur%,header_buku.ilike.ps%,header_buku.ilike.% ps%")
+        .ilike("header_buku", `%${digits}%`);
+    } else if (sourceType === "mb") {
+      const digits = cleanQuery.replace(/\D/g, "");
+      if (!digits) return { data: [], error: false };
+      request = request
+        .or("header_buku.ilike.%madah bhakti%,header_buku.ilike.%madah bakti%,header_buku.ilike.mb%,header_buku.ilike.% mb%")
+        .ilike("header_buku", `%${digits}%`);
+    } else if (sourceType === "teks") {
+      request = request
+        .or("header_buku.is.null,and(header_buku.not.ilike.%puji syukur%,header_buku.not.ilike.ps%,header_buku.not.ilike.% ps%,header_buku.not.ilike.%madah bhakti%,header_buku.not.ilike.%madah bakti%,header_buku.not.ilike.mb%,header_buku.not.ilike.% mb%)")
+        .or(`judul_lagu.ilike.%${cleanQuery}%,header_buku.ilike.%${cleanQuery}%,teks_ayat_1.ilike.%${cleanQuery}%`);
+    } else {
+      request = request.or(`judul_lagu.ilike.%${cleanQuery}%,header_buku.ilike.%${cleanQuery}%`);
+    }
+    const { data, error } = await request
+      .order("judul_lagu", { ascending: true })
+      .limit(10);
+
+    if (error) {
+      console.error("Error searching data_lagu:", error);
+      return { data: [], error: true };
+    }
+
+    return { data: data || [], error: false };
+  }, []);
+
+  const saveSongsToDataLagu = useCallback(async (
+    songsToSave: Pick<
+      LaguMisa,
+      "judul_lagu" | "header_buku" | "teks_reff" | "teks_ayat_1" | "json_ayat_tambahan" | "susunan_nyanyi"
+    >[]
+  ) => {
+    // Samakan normalisasi dedup_key DB agar 1 batch upsert tidak berisi dua key identik (Postgres 21000)
+    const deduped = new Map<string, {
+      judul_lagu: string;
+      header_buku: string | null;
+      teks_reff: string | null;
+      teks_ayat_1: string;
+      json_ayat_tambahan: string;
+      susunan_nyanyi: string;
+    }>();
+
+    for (const song of songsToSave) {
+      const judul = formatJudulLagu(song.judul_lagu || "");
+      const ayat1 = (song.teks_ayat_1 || "").trim();
+      if (!judul || !ayat1) continue;
+      const header = formatHeaderBuku(song.header_buku || "");
+      const normalizedHeader = header
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .replace(/^(puji syukur|ps)\.?\s*(no\.?\s*)?(?=[0-9]|$)/, "ps ")
+        .replace(/^(madah bh?akti|mb)\.?\s*(no\.?\s*)?(?=[0-9]|$)/, "mb ")
+        .trim();
+      const key = `${judul.toLowerCase().replace(/\s+/g, " ")}||${normalizedHeader}`;
+      deduped.set(key, {
+        judul_lagu: judul,
+        header_buku: header || null,
+        teks_reff: song.teks_reff?.trim() || null,
+        teks_ayat_1: song.teks_ayat_1,
+        json_ayat_tambahan: song.json_ayat_tambahan || JSON.stringify([]),
+        susunan_nyanyi: song.susunan_nyanyi || "ayat-only",
+      });
+    }
+
+    const payloads = Array.from(deduped.values());
+    if (payloads.length === 0) return;
+
+    const { error } = await supabase
+      .from("data_lagu")
+      .upsert(payloads, { onConflict: "dedup_key" });
+
+    if (error) {
+      console.error("Error upserting data_lagu:", error);
+    }
+  }, []);
+
+  const fetchDataLagu = useCallback(async (): Promise<{ data: DataLagu[]; error: boolean }> => {
+    const { data, error } = await supabase
+      .from("data_lagu")
+      .select("*")
+      .order("judul_lagu", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching data_lagu:", error);
+      return { data: [], error: true };
+    }
+    return { data: data || [], error: false };
+  }, []);
+
+  const fetchDataLaguById = useCallback(async (id: number): Promise<{ data: DataLagu | null; error: boolean }> => {
+    const { data, error } = await supabase
+      .from("data_lagu")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching data_lagu by id:", error);
+      return { data: null, error: true };
+    }
+    return { data, error: false };
+  }, []);
+
+  const updateDataLagu = useCallback(async (
+    id: number,
+    payload: Pick<DataLagu, "judul_lagu" | "header_buku" | "teks_reff" | "teks_ayat_1" | "json_ayat_tambahan" | "susunan_nyanyi">
+  ): Promise<{ data: DataLagu | null; error: string | null }> => {
+    const cleanPayload = {
+      judul_lagu: formatJudulLagu(payload.judul_lagu),
+      header_buku: formatHeaderBuku(payload.header_buku || "") || null,
+      teks_reff: payload.teks_reff?.trim() || null,
+      teks_ayat_1: payload.teks_ayat_1,
+      json_ayat_tambahan: payload.json_ayat_tambahan || JSON.stringify([]),
+      susunan_nyanyi: payload.susunan_nyanyi || "ayat-only",
+    };
+
+    const { data, error } = await supabase
+      .from("data_lagu")
+      .update(cleanPayload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        return { data: null, error: "Lagu dengan judul dan nomor buku tersebut sudah ada (duplikat)." };
+      }
+      console.error("Error updating data_lagu:", error);
+      return { data: null, error: "Gagal menyimpan perubahan lagu ke database." };
+    }
+
+    return { data, error: null };
+  }, []);
+
+  const deleteDataLagu = useCallback(async (id: number): Promise<boolean> => {
+    const { error } = await supabase.from("data_lagu").delete().eq("id", id);
+    if (error) {
+      console.error("Error deleting data_lagu:", error);
+      return false;
+    }
+    return true;
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -242,6 +412,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getMisaSongs,
         saveMisaSongs,
         deleteMisa,
+        searchDataLagu,
+        saveSongsToDataLagu,
+        fetchDataLagu,
+        fetchDataLaguById,
+        updateDataLagu,
+        deleteDataLagu,
       }}
     >
       {children}

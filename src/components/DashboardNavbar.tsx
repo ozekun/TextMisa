@@ -44,7 +44,7 @@ export default function DashboardNavbar() {
     <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-slate-100/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-18 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity" title="Beranda">
+        <Link href={currentUser?.role === "admin" ? "/dashboard/admin" : "/dashboard"} className="flex items-center gap-2.5 hover:opacity-90 transition-opacity" title="Beranda">
           <img src="/logo.png" alt="KOMSOS Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain shrink-0" />
           <span className="hidden sm:inline text-xl font-extrabold tracking-tight">
             <span className="text-brand-primary">Teks</span>
@@ -54,24 +54,35 @@ export default function DashboardNavbar() {
 
         {/* Navigation Pills */}
         <nav className="bg-slate-100/80 p-1 rounded-full flex gap-1 border border-slate-200/20">
-          <Link
-            href="/dashboard"
-            className={`px-4 sm:px-5 py-1.5 rounded-full text-xs font-bold transition-all ${pathname === "/dashboard"
-              ? "bg-white text-brand-primary shadow-sm"
-              : "text-text-sec hover:text-slate-950"
-              }`}
-          >
-            Home
-          </Link>
-          <Link
-            href="/dashboard/riwayat"
-            className={`px-4 sm:px-5 py-1.5 rounded-full text-xs font-bold transition-all ${pathname === "/dashboard/riwayat"
-              ? "bg-white text-brand-primary shadow-sm"
-              : "text-text-sec hover:text-slate-950"
-              }`}
-          >
-            Riwayat
-          </Link>
+          {currentUser?.role === "admin" ? (
+            <Link
+              href="/dashboard/admin"
+              className="px-4 sm:px-5 py-1.5 rounded-full text-xs font-bold transition-all bg-white text-brand-primary shadow-sm"
+            >
+              Data Lagu
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/dashboard"
+                className={`px-4 sm:px-5 py-1.5 rounded-full text-xs font-bold transition-all ${pathname === "/dashboard"
+                  ? "bg-white text-brand-primary shadow-sm"
+                  : "text-text-sec hover:text-slate-950"
+                  }`}
+              >
+                Home
+              </Link>
+              <Link
+                href="/dashboard/riwayat"
+                className={`px-4 sm:px-5 py-1.5 rounded-full text-xs font-bold transition-all ${pathname === "/dashboard/riwayat"
+                  ? "bg-white text-brand-primary shadow-sm"
+                  : "text-text-sec hover:text-slate-950"
+                  }`}
+              >
+                Riwayat
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Profile Dropdown */}
@@ -81,7 +92,7 @@ export default function DashboardNavbar() {
               {currentUser?.nama_kbg || "Petugas Liturgi"}
             </p>
             <p className="text-[10px] text-text-sec mt-1 leading-none">
-              {currentUser?.nama_kbg?.startsWith("KBG") ? "Akun KBG" : "Akun Lingkungan"}
+              {currentUser?.role === "admin" ? "Admin Paroki" : currentUser?.nama_kbg?.startsWith("KBG") ? "Akun KBG" : "Akun Lingkungan"}
             </p>
           </div>
 
@@ -96,7 +107,7 @@ export default function DashboardNavbar() {
             <div className="absolute right-0 mt-12 w-56 bg-white rounded-3xl border border-slate-100 shadow-xl py-2 z-50 origin-top-right transition-all top-0">
               <div className="px-4 py-3 border-b border-slate-100 md:hidden">
                 <p className="text-xs text-text-sec">
-                  {currentUser?.nama_kbg?.startsWith("KBG") ? "Akun KBG" : "Akun Lingkungan"}
+                  {currentUser?.role === "admin" ? "Admin Paroki" : currentUser?.nama_kbg?.startsWith("KBG") ? "Akun KBG" : "Akun Lingkungan"}
                 </p>
                 <p className="text-sm font-bold text-slate-800 truncate" title={currentUser?.nama_kbg || "Petugas Liturgi"}>
                   {currentUser?.nama_kbg || "Petugas Liturgi"}

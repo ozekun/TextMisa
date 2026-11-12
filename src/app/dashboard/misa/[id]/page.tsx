@@ -3,8 +3,8 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
-import { LaguMisa } from "@/types";
-import { generateSlideSequence, Slide } from "@/utils/songSplitter";
+import { DataLagu, LaguMisa } from "@/types";
+import { formatHeaderBuku, formatJudulLagu, generateSlideSequence, Slide } from "@/utils/songSplitter";
 import Link from "next/link";
 import Swal from "sweetalert2";
 
@@ -60,7 +60,7 @@ function WorkspacePage({ params }: PageProps) {
   const resolvedParams = use(params);
   const misaId = parseInt(resolvedParams.id, 10);
 
-  const { currentUser, misaList, updateMisaStatus, getMisaSongs, saveMisaSongs, isLoading, songs } = useApp();
+  const { currentUser, misaList, updateMisaStatus, getMisaSongs, saveMisaSongs, searchDataLagu, saveSongsToDataLagu, isLoading, songs } = useApp();
 
   const [activeTab, setActiveTab] = useState("Pembukaan");
   const [activeMisa, setActiveMisa] = useState<any>(null);
@@ -82,6 +82,16 @@ function WorkspacePage({ params }: PageProps) {
   const [mounted, setMounted] = useState(false);
   const [hasAccess, setHasAccess] = useState(true);
 
+  // Mode pilih alur pengisian lagu + state pencarian Data Lagu
+  const [inputMode, setInputMode] = useState<"search" | "manual">("search");
+  const [searchSource, setSearchSource] = useState<"ps" | "mb" | "teks" | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<DataLagu[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+
+  const hasSongContent = (song?: LaguMisa) =>
+    Boolean(song && ((song.judul_lagu || "").trim() || (song.teks_ayat_1 || "").trim()));
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -118,6 +128,7 @@ function WorkspacePage({ params }: PageProps) {
       const sorted = [...filtered].sort((a, b) => a.urutan_lagu - b.urutan_lagu);
       setSongsInTab(sorted);
       setLastSavedSongs(sorted);
+      setInputMode(hasSongContent(sorted[0]) ? "manual" : "search");
 
       if (template) {
         // Check if the saved text matches the template. If not, it's manual mode.
@@ -133,14 +144,17 @@ function WorkspacePage({ params }: PageProps) {
         defaultJudul = template.judul;
         defaultTeks = template.teks;
         setIsManualOrdinarium(false); // Default to template for new ordinarium
+        setInputMode("manual");
       } else if (activeTab === "Bacaan 1") {
         defaultJudul = "Bacaan 1";
       } else if (activeTab === "Bacaan 2") {
         defaultJudul = "Bacaan 2";
       } else if (activeTab === "Injil") {
         defaultJudul = "Bacaan Injil";
+        setInputMode("manual");
       } else {
         setIsManualOrdinarium(true);
+        setInputMode("search");
       }
 
       // Initialize with one default blank song
@@ -161,6 +175,10 @@ function WorkspacePage({ params }: PageProps) {
     setIsDirty(false);
     setActiveSongIndex(0);
     setCurrentSlideIndex(0);
+    setSearchSource(null);
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchError(false);
   }, [activeTab, activeMisa, isLoading]);
 
   // Auto-save effect (hanya berjalan saat ada perubahan dari user / isDirty === true)
@@ -202,6 +220,28 @@ function WorkspacePage({ params }: PageProps) {
 
     return () => clearTimeout(timer);
   }, [songsInTab, misaId, mounted, isLoading, activeMisa, isDirty]);
+
+  // Debounced search against data_lagu
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    const minLength = searchSource === "teks" ? 2 : 1;
+    if (!searchSource || trimmed.length < minLength) {
+      setSearchResults([]);
+      setSearchError(false);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      const { data, error } = await searchDataLagu(trimmed, searchSource);
+      setSearchResults(data);
+      setSearchError(error);
+      setIsSearching(false);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchSource, searchDataLagu]);
 
   if (!mounted || isLoading) {
     return (
@@ -301,6 +341,10 @@ function WorkspacePage({ params }: PageProps) {
     setActiveSongIndex(songsInTab.length);
     setCurrentSlideIndex(0);
     setIsDirty(true);
+    setInputMode("search");
+    setSearchSource(null);
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   const removeSongFromTab = (index: number) => {
@@ -312,9 +356,39 @@ function WorkspacePage({ params }: PageProps) {
       urutan_lagu: i + 1,
     }));
     setSongsInTab(reindexed);
-    setActiveSongIndex(Math.max(0, index - 1));
+    const nextIndex = Math.max(0, index - 1);
+    setActiveSongIndex(nextIndex);
     setCurrentSlideIndex(0);
+    setInputMode(hasSongContent(reindexed[nextIndex]) ? "manual" : "search");
+    setSearchSource(null);
     setIsDirty(true);
+  };
+
+  const handleSelectDataLagu = (dataSong: DataLagu) => {
+    setSongsInTab((prev) =>
+      prev.map((song, i) =>
+        i === activeSongIndex
+          ? {
+              ...song,
+              judul_lagu: dataSong.judul_lagu,
+              header_buku: dataSong.header_buku || "",
+              susunan_nyanyi: dataSong.susunan_nyanyi || "ayat-only",
+              teks_reff: dataSong.teks_reff || "",
+              teks_ayat_1: dataSong.teks_ayat_1,
+              json_ayat_tambahan: dataSong.json_ayat_tambahan || JSON.stringify([]),
+            }
+          : song
+      )
+    );
+    if (activeSection.ordinarium) {
+      setIsManualOrdinarium(true);
+    }
+    setIsDirty(true);
+    setCurrentSlideIndex(0);
+    setInputMode("manual");
+    setSearchSource(null);
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   // Complete mass liturgy composition
@@ -339,6 +413,23 @@ function WorkspacePage({ params }: PageProps) {
       if (result.isConfirmed) {
         try {
           await saveMisaSongs(misaId, songsInTab);
+          const otherSavedSongs = getMisaSongs(misaId).filter((s) => s.kategori !== activeTab);
+          const allMisaSongs = [...otherSavedSongs, ...songsInTab];
+          const dataSongsToSave = allMisaSongs.filter((song) => {
+            const section = LITURGY_SECTIONS.find((sec) => sec.key === song.kategori);
+            if (!section || section.isReading) return false;
+            const template = ORDINARIUM_TEMPLATES[song.kategori];
+            if (
+              template &&
+              (song.judul_lagu || "").trim() === template.judul.trim() &&
+              (song.teks_ayat_1 || "").trim() === template.teks.trim() &&
+              !(song.header_buku || "").trim()
+            ) {
+              return false;
+            }
+            return Boolean((song.judul_lagu || "").trim() && (song.teks_ayat_1 || "").trim());
+          });
+          await saveSongsToDataLagu(dataSongsToSave);
           const safeFilename = await exportToSpxCore();
           await updateMisaStatus(misaId, "Ready");
 
@@ -463,9 +554,9 @@ function WorkspacePage({ params }: PageProps) {
             susunanNyanyi: song.susunan_nyanyi,
           });
 
-          let f0_val = song.header_buku || "";
+          let f0_val = !section.isReading && song.header_buku ? formatHeaderBuku(song.header_buku) : (song.header_buku || "");
           let f1_val = slides.length > 0 ? slides.map(slide => slide.text).join("\n\n\n") : "[Lirik belum diisi]";
-          let f2_val = song.judul_lagu || section.key;
+          let f2_val = !section.isReading && song.judul_lagu ? formatJudulLagu(song.judul_lagu) : (song.judul_lagu || section.key);
 
           let listName = section.key;
 
@@ -752,6 +843,10 @@ function WorkspacePage({ params }: PageProps) {
                         onClick={() => {
                           setActiveSongIndex(i);
                           setCurrentSlideIndex(0);
+                          setInputMode(hasSongContent(song) ? "manual" : "search");
+                          setSearchSource(null);
+                          setSearchQuery("");
+                          setSearchResults([]);
                         }}
                         className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all ${activeSongIndex === i
                           ? "bg-white text-brand-primary shadow-sm"
@@ -783,6 +878,267 @@ function WorkspacePage({ params }: PageProps) {
             {/* Song Form */}
             {currentSong && (
               <div className="space-y-5">
+                {/* Langkah 1: Pilih Cari Lagu atau Input Lagu Manual (bukan untuk Bacaan) */}
+                {!activeSection.isReading && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setInputMode("search")}
+                        className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                          inputMode === "search"
+                            ? "bg-teal-50/70 border-brand-primary text-slate-900 ring-1 ring-brand-primary/20"
+                            : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50/60"
+                        }`}
+                      >
+                        <span
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                            inputMode === "search"
+                              ? "bg-brand-primary text-white"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-extrabold text-slate-900">Cari Lagu</span>
+                          <span className="block text-[11px] text-text-sec truncate">Ambil dari Data Lagu</span>
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInputMode("manual")}
+                        className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                          inputMode === "manual"
+                            ? "bg-teal-50/70 border-brand-primary text-slate-900 ring-1 ring-brand-primary/20"
+                            : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50/60"
+                        }`}
+                      >
+                        <span
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                            inputMode === "manual"
+                              ? "bg-brand-primary text-white"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89 1.14l-2.685.8.8-2.685a4.5 4.5 0 011.14-1.89l12.665-12.665z" />
+                          </svg>
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-extrabold text-slate-900">Input Lagu</span>
+                          <span className="block text-[11px] text-text-sec truncate">Tulis judul & lirik baru</span>
+                        </span>
+                      </button>
+                    </div>
+
+                    {inputMode === "search" && (
+                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 sm:p-5 space-y-4">
+                        {/* Pilihan Sumber Sebelum Searchbox: Puji Syukur (PS) atau Teks */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-slate-800">
+                              Pilih Sumber Lagu
+                            </span>
+                            {!searchSource && (
+                              <button
+                                type="button"
+                                onClick={() => setInputMode("manual")}
+                                className="text-[11px] text-brand-primary hover:text-brand-hover font-bold cursor-pointer"
+                              >
+                                Input Lagu Manual
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { key: "ps" as const, label: "PS" },
+                              { key: "mb" as const, label: "MB" },
+                              { key: "teks" as const, label: "Teks" },
+                            ].map((opt) => (
+                              <button
+                                key={opt.key}
+                                type="button"
+                                onClick={() => {
+                                  setSearchSource(opt.key);
+                                  setSearchQuery("");
+                                  setSearchResults([]);
+                                  setSearchError(false);
+                                }}
+                                className={`py-2.5 px-3 rounded-xl border text-xs font-extrabold text-center transition-all cursor-pointer ${
+                                  searchSource === opt.key
+                                    ? "bg-brand-primary border-brand-primary text-white shadow-sm"
+                                    : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100/70"
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Searchbox muncul setelah user memilih PS, MB, atau Teks */}
+                        {searchSource && (
+                          <div className="pt-3 border-t border-slate-200/70 space-y-3.5">
+                            <div>
+                              <label htmlFor="bank-lagu-search" className="block text-xs font-bold text-slate-800 mb-1.5">
+                                {searchSource === "ps"
+                                  ? "Cari Lagu Puji Syukur (PS)"
+                                  : searchSource === "mb"
+                                    ? "Cari Lagu Madah Bhakti (MB)"
+                                    : "Cari Lagu Teks"}
+                              </label>
+                              <div className="relative">
+                                <svg
+                                  className="w-4 h-4 text-brand-primary absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <input
+                                  key={searchSource}
+                                  id="bank-lagu-search"
+                                  type={searchSource === "teks" ? "text" : "number"}
+                                  inputMode={searchSource === "teks" ? "text" : "numeric"}
+                                  min={searchSource === "teks" ? undefined : 1}
+                                  value={searchQuery}
+                                  onChange={(e) =>
+                                    setSearchQuery(
+                                      searchSource === "teks"
+                                        ? e.target.value
+                                        : e.target.value.replace(/\D/g, "")
+                                    )
+                                  }
+                                  placeholder={
+                                    searchSource === "ps"
+                                      ? "Masukkan nomor PS, mis. 320..."
+                                      : searchSource === "mb"
+                                        ? "Masukkan nomor MB, mis. 180..."
+                                        : "Ketik judul atau potongan lirik lagu teks..."
+                                  }
+                                  className="block w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                {isSearching ? (
+                                  <svg
+                                    className="animate-spin h-4 w-4 text-brand-primary absolute right-3.5 top-1/2 -translate-y-1/2"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                  </svg>
+                                ) : (
+                                  searchQuery && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSearchQuery("");
+                                        setSearchResults([]);
+                                      }}
+                                      aria-label="Hapus pencarian"
+                                      className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+                                    >
+                                      ×
+                                    </button>
+                                  )
+                                )}
+                              </div>
+                            </div>
+
+                            {searchQuery.trim().length < (searchSource === "teks" ? 2 : 1) ? (
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1 text-xs text-text-sec">
+                                <span>
+                                  {searchSource === "ps"
+                                    ? "Masukkan nomor lagu Puji Syukur untuk mencari."
+                                    : searchSource === "mb"
+                                      ? "Masukkan nomor lagu Madah Bhakti untuk mencari."
+                                      : "Ketik minimal 2 huruf untuk mencari di daftar lagu Teks."}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setInputMode("manual")}
+                                  className="self-start sm:self-auto text-brand-primary hover:text-brand-hover font-bold cursor-pointer shrink-0"
+                                >
+                                  Input Lagu Manual
+                                </button>
+                              </div>
+                            ) : searchError ? (
+                              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-amber-800">
+                                <span>Data Lagu belum tersedia di database.</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setInputMode("manual")}
+                                  className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-white border border-amber-200 font-bold text-amber-900 hover:bg-amber-100/50 cursor-pointer shrink-0"
+                                >
+                                  Input Lagu Manual
+                                </button>
+                              </div>
+                            ) : isSearching ? (
+                              <div className="py-4 text-center text-xs text-slate-500">Mencari di Data Lagu...</div>
+                            ) : searchResults.length === 0 ? (
+                              <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="text-xs text-slate-600">
+                                  Lagu {searchSource === "ps" ? "PS" : searchSource === "mb" ? "MB" : "Teks"}{" "}
+                                  <span className="font-bold text-slate-900">&ldquo;{searchQuery.trim()}&rdquo;</span> belum ada di Data Lagu.
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setInputMode("manual")}
+                                  className="self-start sm:self-auto px-4 py-2 rounded-xl bg-brand-primary hover:bg-brand-hover text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+                                >
+                                  Input sebagai Lagu Baru
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                                {searchResults.map((item) => (
+                                  <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => handleSelectDataLagu(item)}
+                                    className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-teal-50/40 transition-colors cursor-pointer group"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-sm font-bold text-slate-900 group-hover:text-brand-primary truncate">
+                                        {item.judul_lagu}
+                                      </span>
+                                      {item.header_buku && (
+                                        <>
+                                          <span className="text-sm text-slate-300 shrink-0" aria-hidden="true">|</span>
+                                          <span className="text-xs font-semibold text-text-sec shrink-0">
+                                            {item.header_buku}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                    <svg
+                                      className="w-4 h-4 text-slate-400 group-hover:text-brand-primary transition-colors shrink-0"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(activeSection.isReading || inputMode === "manual") && (
+                  <>
+
                 {/* Book Header & Title */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -802,6 +1158,14 @@ function WorkspacePage({ params }: PageProps) {
                           updateSongField(activeSongIndex, "judul_lagu", e.target.value);
                         }
                       }}
+                      onBlur={(e) => {
+                        if (!activeSection.isReading) {
+                          const formatted = formatJudulLagu(e.target.value);
+                          if (formatted !== (currentSong.judul_lagu || "")) {
+                            updateSongField(activeSongIndex, "judul_lagu", formatted);
+                          }
+                        }
+                      }}
                       disabled={activeSection.isReading}
                       className={`block w-full px-4 py-3 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all ${activeSection.isReading
                         ? "bg-slate-100 text-slate-500 font-semibold cursor-not-allowed"
@@ -815,10 +1179,18 @@ function WorkspacePage({ params }: PageProps) {
                     </label>
                     <input
                       type="text"
-                      placeholder={activeSection.isReading ? "Contoh: Kej 1:1-5" : "Contoh: Puji Syukur No. 320"}
+                      placeholder={activeSection.isReading ? "Contoh: Kej 1:1-5" : "Contoh: Puji Syukur 332"}
                       value={currentSong.header_buku || ""}
                       onChange={(e) => updateSongField(activeSongIndex, "header_buku", e.target.value)}
-                      className="block w-full px-4 py-3 border border-slate-200 rounded-2xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
+                      onBlur={(e) => {
+                        if (!activeSection.isReading) {
+                          const formatted = formatHeaderBuku(e.target.value);
+                          if (formatted !== (currentSong.header_buku || "")) {
+                            updateSongField(activeSongIndex, "header_buku", formatted);
+                          }
+                        }
+                      }}
+                      className="block w-full px-4 py-3 border border-slate-200 rounded-2xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all bg-white"
                     />
                   </div>
                 </div>
@@ -995,6 +1367,8 @@ function WorkspacePage({ params }: PageProps) {
                   </button>
                 )}
 
+                  </>
+                )}
                 {/* Auto-Save Indicator */}
                 <div className="pt-4 border-t border-slate-100 flex justify-end items-center gap-3 h-12">
                   {saveStatus === "saving" && (
@@ -1058,7 +1432,7 @@ function WorkspacePage({ params }: PageProps) {
                     ) : (
                       currentSong?.header_buku && (
                         <div className="bg-[#ffa500] text-[#2a1c00] px-4 py-1.5 rounded shadow-sm text-xs font-bold italic z-20 -mb-2 relative">
-                          {currentSong.header_buku}
+                          {formatHeaderBuku(currentSong.header_buku)}
                         </div>
                       )
                     )}
@@ -1087,7 +1461,7 @@ function WorkspacePage({ params }: PageProps) {
                     {/* Bottom Box: Song Title / Section (Orange badge) */}
                     {!activeSection.isReading && (
                       <div className="bg-[#ffa500] text-[#2a1c00] px-4 py-1.5 rounded shadow-sm text-xs font-bold italic z-20 -mt-2 relative">
-                        {currentSong?.judul_lagu || activeTab}
+                        {currentSong?.judul_lagu ? formatJudulLagu(currentSong.judul_lagu) : activeTab}
                       </div>
                     )}
                   </div>

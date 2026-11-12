@@ -2,6 +2,7 @@ export interface User {
   id: number;
   username: string;
   nama_kbg: string;
+  role?: "user" | "admin";
 }
 
 export interface JadwalMisa {
@@ -25,5 +26,17 @@ export interface LaguMisa {
   teks_ayat_1: string;
   json_ayat_tambahan?: string; // stringified JSON array of additional verses
   susunan_nyanyi?: string; // e.g., "reff-ayat-reff"
+  created_at: string;
+}
+
+export interface DataLagu {
+  id: number;
+  judul_lagu: string;
+  header_buku?: string;
+  teks_reff?: string;
+  teks_ayat_1: string;
+  json_ayat_tambahan?: string;
+  susunan_nyanyi?: string;
+  updated_at?: string;
   created_at: string;
 }

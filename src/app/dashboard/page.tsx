@@ -33,6 +33,8 @@ function DashboardHome() {
       const storedUser = localStorage.getItem("user");
       if (!storedUser) {
         router.push("/login");
+      } else if (currentUser?.role === "admin") {
+        router.replace("/dashboard/admin");
       }
     }
   }, [currentUser, router, mounted]);

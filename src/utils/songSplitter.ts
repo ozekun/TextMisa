@@ -215,3 +215,32 @@ export function generateSlideSequence(params: {
 
   return sequenceSlides;
 }
+
+// Rapikan judul lagu hanya jika semua huruf kecil atau mayoritas huruf kapital (capslock)
+export function formatJudulLagu(text: string): string {
+  const clean = text.trim().replace(/\s+/g, " ");
+  if (!clean) return "";
+  const letters = clean.replace(/[^a-zA-Z]/g, "");
+  if (!letters) return clean;
+  const upperCount = letters.split("").filter((c) => c === c.toUpperCase()).length;
+  if (upperCount === 0 || upperCount / letters.length >= 0.6) {
+    return clean.replace(/[a-zA-Z]+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  }
+  return clean;
+}
+
+// Standarkan input nomor/sumber lagu menjadi "Puji Syukur 332", "Madah Bhakti 180", atau "Teks"
+export function formatHeaderBuku(text: string): string {
+  const clean = text.trim().replace(/\s+/g, " ");
+  if (!clean) return "";
+
+  const psMatch = clean.match(/^(?:puji\s+syukur|ps)\.?\s*(?:(?:no|nomor)\.?\s*)?(\d+[a-zA-Z]*)?$/i);
+  if (psMatch) return psMatch[1] ? `Puji Syukur ${psMatch[1].toLowerCase()}` : "Puji Syukur";
+
+  const mbMatch = clean.match(/^(?:madah\s+bh?akti|mb)\.?\s*(?:(?:no|nomor)\.?\s*)?(\d+[a-zA-Z]*)?$/i);
+  if (mbMatch) return mbMatch[1] ? `Madah Bhakti ${mbMatch[1].toLowerCase()}` : "Madah Bhakti";
+
+  if (/^(?:teks|lembaran\s+teks)$/i.test(clean)) return "Teks";
+
+  return formatJudulLagu(clean);
+}
